@@ -36,10 +36,19 @@ const Navbar = ({ setPage, currentPage, currentUser, setCurrentUser }) => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  // Lock body scroll when menu is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
+    }
+  }, [isOpen]);
+
   const isHome = currentPage === "home";
   const navClasses = `fixed w-full z-50 transition-all duration-300 ${
-    scrolled || !isHome
-      ? "bg-slate-900/95 backdrop-blur-md shadow-lg py-2"
+    scrolled || !isHome || isOpen
+      ? "bg-slate-900 shadow-lg py-2"
       : "bg-transparent py-4"
   }`;
 
@@ -49,7 +58,7 @@ const Navbar = ({ setPage, currentPage, currentUser, setCurrentUser }) => {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <div
-            className="flex items-center cursor-pointer gap-3 group"
+            className="flex items-center cursor-pointer gap-3 group relative z-50"
             onClick={() => setPage("home")}
           >
             <div className="bg-amber-500 p-2 rounded-xl shadow-lg shadow-amber-500/20 group-hover:shadow-amber-500/40 transition-all duration-300">
@@ -171,10 +180,10 @@ const Navbar = ({ setPage, currentPage, currentUser, setCurrentUser }) => {
           </div>
 
           {/* Mobile Menu Button */}
-          <div className="flex md:hidden">
+          <div className="flex md:hidden relative z-50">
             <button
               onClick={() => setIsOpen(!isOpen)}
-              className="bg-slate-800/80 p-2 rounded-lg text-amber-500 hover:text-white hover:bg-slate-700 transition-colors"
+              className="bg-slate-800 p-2 rounded-lg text-amber-500 hover:text-white hover:bg-amber-500 transition-colors shadow-lg"
             >
               {isOpen ? (
                 <X className="h-6 w-6" />
@@ -188,24 +197,23 @@ const Navbar = ({ setPage, currentPage, currentUser, setCurrentUser }) => {
 
       {/* Mobile Menu Overlay */}
       <div
-        className={`md:hidden fixed inset-0 z-40 bg-slate-900/95 backdrop-blur-xl transition-transform duration-300 ease-in-out ${
+        className={`md:hidden fixed inset-0 z-40 bg-slate-900 h-[100dvh] flex flex-col justify-center transition-transform duration-300 ease-in-out ${
           isOpen ? "translate-x-0" : "translate-x-full"
         }`}
-        style={{ top: "64px" }}
       >
-        <div className="px-4 pt-8 pb-3 space-y-4">
+        <div className="px-6 space-y-4">
           <button
             onClick={() => {
               setPage("home");
               setIsOpen(false);
             }}
-            className={`flex items-center gap-3 w-full px-4 py-4 rounded-xl text-lg font-medium transition-all ${
+            className={`flex items-center gap-4 w-full px-6 py-5 rounded-2xl text-xl font-bold transition-all ${
               currentPage === "home"
-                ? "bg-amber-500/10 text-amber-500"
-                : "text-gray-300 hover:bg-slate-800"
+                ? "bg-amber-500/10 text-amber-500 border border-amber-500/20"
+                : "text-slate-300 hover:bg-slate-800 hover:text-white"
             }`}
           >
-            <Home size={20} /> Početna
+            <Home size={24} /> Početna
           </button>
 
           <button
@@ -213,31 +221,28 @@ const Navbar = ({ setPage, currentPage, currentUser, setCurrentUser }) => {
               setPage("about");
               setIsOpen(false);
             }}
-            className={`flex items-center gap-3 w-full px-4 py-4 rounded-xl text-lg font-medium transition-all ${
+            className={`flex items-center gap-4 w-full px-6 py-5 rounded-2xl text-xl font-bold transition-all ${
               currentPage === "about"
-                ? "bg-amber-500/10 text-amber-500"
-                : "text-gray-300 hover:bg-slate-800"
+                ? "bg-amber-500/10 text-amber-500 border border-amber-500/20"
+                : "text-slate-300 hover:bg-slate-800 hover:text-white"
             }`}
           >
-            <Info size={20} /> O Nama
+            <Info size={24} /> O Nama
           </button>
-
           <button
             onClick={() => {
               setPage("contact");
               setIsOpen(false);
             }}
-            className={`flex items-center gap-3 w-full px-4 py-4 rounded-xl text-lg font-medium transition-all ${
+            className={`flex items-center gap-4 w-full px-6 py-5 rounded-2xl text-xl font-bold transition-all ${
               currentPage === "contact"
-                ? "bg-amber-500/10 text-amber-500"
-                : "text-gray-300 hover:bg-slate-800"
+                ? "bg-amber-500/10 text-amber-500 border border-amber-500/20"
+                : "text-slate-300 hover:bg-slate-800 hover:text-white"
             }`}
           >
-            <Phone size={20} /> Kontakt
+            <Phone size={24} /> Kontakt
           </button>
-
           <div className="border-t border-slate-800 my-4"></div>
-
           <button
             onClick={() => {
               if (
@@ -266,7 +271,6 @@ const Navbar = ({ setPage, currentPage, currentUser, setCurrentUser }) => {
               </>
             )}
           </button>
-
           {currentUser && (
             <button
               onClick={handleLogout}
