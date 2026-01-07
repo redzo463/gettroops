@@ -115,7 +115,7 @@ const UserAuth = ({ setCurrentUser, setPage, isDemo }) => {
           const { data: adminData, error: adminError } = await supabase
             .from("admins")
             .select("*")
-            .eq("email", formData.email)
+            .eq("email", formData.email.toLowerCase())
             .single();
 
           if (adminError) {
@@ -132,6 +132,16 @@ const UserAuth = ({ setCurrentUser, setPage, isDemo }) => {
               adminData.name.toLowerCase() === "redzep" ? "master" : "staff";
             userProfile = adminData;
             console.log("Assigned Role:", role);
+          } else if (formData.email.toLowerCase() === "rsbredzo@gmail.com") {
+            // Safety Net: Always allow the owner to be Master Admin
+            console.log("⚠️ Owner Detected (Fallback): Forcing 'master' role.");
+            role = "master";
+            userProfile = {
+              name: "Redzep",
+              email: "rsbredzo@gmail.com",
+              role: "master",
+              id: "master-fallback",
+            };
           } else {
             console.log("User is not an admin. Checking Candidate profile...");
             // Check if Candidate
