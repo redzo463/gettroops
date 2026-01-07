@@ -102,22 +102,38 @@ const UserAuth = ({ setCurrentUser, setPage, isDemo }) => {
           if (error) throw error;
 
           // Fetch user details (Role)
+          console.log(
+            "Login successful. Checking Admin status for:",
+            formData.email
+          );
+
           // Try to find in Admins first
           let role = "candidate";
           let userProfile = null;
 
           // Check if Admin
-          const { data: adminData } = await supabase
+          const { data: adminData, error: adminError } = await supabase
             .from("admins")
             .select("*")
             .eq("email", formData.email)
             .single();
 
+          if (adminError) {
+            console.warn(
+              "Admin check error (or not found):",
+              adminError.message
+            );
+          } else {
+            console.log("Admin Data Found:", adminData);
+          }
+
           if (adminData) {
             role =
               adminData.name.toLowerCase() === "redzep" ? "master" : "staff";
             userProfile = adminData;
+            console.log("Assigned Role:", role);
           } else {
+            console.log("User is not an admin. Checking Candidate profile...");
             // Check if Candidate
             const { data: candidateData } = await supabase
               .from("users")
@@ -137,10 +153,13 @@ const UserAuth = ({ setCurrentUser, setPage, isDemo }) => {
             email: formData.email, // Ensure email is present
           };
 
+          console.log("Final User Data:", userData);
+          const targetPage =
+            role === "master" || role === "staff" ? "admin" : "dashboard";
+          console.log("Redirecting to:", targetPage);
+
           setCurrentUser(userData);
-          setPage(
-            role === "master" || role === "staff" ? "admin" : "dashboard"
-          );
+          setPage(targetPage);
         } else {
           // Register
           const { data, error } = await supabase.auth.signUp({
