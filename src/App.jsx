@@ -136,16 +136,39 @@ export default function App() {
         {/* Login Component Removed */}
 
         {page === "admin" &&
-          currentUser &&
-          (currentUser.role === "master" || currentUser.role === "staff") && (
+          (currentUser &&
+          (currentUser.role === "master" || currentUser.role === "staff") ? (
             <AdminDashboard
               user={user}
               setPage={setPage}
-              adminUser={currentUser} // Use currentUser as adminUser
-              setAdminUser={setCurrentUser} // Allow updating currentUser
+              adminUser={currentUser}
+              setAdminUser={setCurrentUser}
               isDemo={isDemo}
             />
-          )}
+          ) : (
+            <div className="flex items-center justify-center min-h-screen bg-slate-900 text-white">
+              <div className="text-center">
+                <h2 className="text-2xl font-bold mb-4">
+                  Učitavanje Dashboarda...
+                </h2>
+                {currentUser ? (
+                  <div className="text-red-400">
+                    <p>Pristup nije dozvoljen ili se podaci učitavaju.</p>
+                    <p>Vaša uloga: {currentUser.role || "Nema uloge"}</p>
+                    <p>Email: {currentUser.email}</p>
+                    <button
+                      onClick={() => window.location.reload()}
+                      className="mt-4 px-4 py-2 bg-slate-700 rounded hover:bg-slate-600"
+                    >
+                      Osvježi Stranicu
+                    </button>
+                  </div>
+                ) : (
+                  <p>Provjera autorizacije...</p>
+                )}
+              </div>
+            </div>
+          ))}
 
         {page === "auth" && (
           <UserAuth
@@ -160,7 +183,6 @@ export default function App() {
         {page === "dashboard" && currentUser && (
           <CandidateDashboard
             user={currentUser}
-            firebaseUser={user}
             setPage={setPage}
             isDemo={isDemo}
           />
