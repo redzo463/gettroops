@@ -1,8 +1,11 @@
 
+-- THIS SCRIPT IS SAFE TO RUN MULTIPLE TIMES
+-- It checks if policies exist before creating them
+
 -- ENABLE EXTENSIONS
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- 1. USERS TABLE (Public Profile used by Auth)
+-- 1. USERS TABLE
 CREATE TABLE IF NOT EXISTS public.users (
   id uuid REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
   email text NOT NULL,
@@ -11,22 +14,43 @@ CREATE TABLE IF NOT EXISTS public.users (
   created_at timestamptz DEFAULT now()
 );
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Public users are viewable by everyone" ON public.users FOR SELECT USING (true);
-CREATE POLICY "Users can insert their own profile" ON public.users FOR INSERT WITH CHECK (auth.uid() = id);
-CREATE POLICY "Users can update own profile" ON public.users FOR UPDATE USING (auth.uid() = id);
 
--- 2. ADMINS TABLE (For Dashboard Access)
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'users' AND policyname = 'Public users are viewable by everyone') THEN
+        CREATE POLICY "Public users are viewable by everyone" ON public.users FOR SELECT USING (true);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'users' AND policyname = 'Users can insert their own profile') THEN
+        CREATE POLICY "Users can insert their own profile" ON public.users FOR INSERT WITH CHECK (auth.uid() = id);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'users' AND policyname = 'Users can update own profile') THEN
+        CREATE POLICY "Users can update own profile" ON public.users FOR UPDATE USING (auth.uid() = id);
+    END IF;
+END $$;
+
+-- 2. ADMINS TABLE
 CREATE TABLE IF NOT EXISTS public.admins (
   id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
   email text UNIQUE NOT NULL,
   name text NOT NULL,
-  role text NOT NULL, -- 'master' or 'staff'
+  role text NOT NULL, 
   code text,
   created_at timestamptz DEFAULT now()
 );
 ALTER TABLE public.admins ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Admins are viewable by everyone" ON public.admins FOR SELECT USING (true);
-CREATE POLICY "Allow all operations for now" ON public.admins FOR ALL USING (true);
+
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'admins' AND policyname = 'Admins are viewable by everyone') THEN
+        CREATE POLICY "Admins are viewable by everyone" ON public.admins FOR SELECT USING (true);
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'admins' AND policyname = 'Allow all operations for now') THEN
+        CREATE POLICY "Allow all operations for now" ON public.admins FOR ALL USING (true);
+    END IF;
+END $$;
 
 -- 3. COMPANIES TABLE
 CREATE TABLE IF NOT EXISTS public.companies (
@@ -44,8 +68,17 @@ CREATE TABLE IF NOT EXISTS public.companies (
   created_at timestamptz DEFAULT now()
 );
 ALTER TABLE public.companies ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Companies are viewable by everyone" ON public.companies FOR SELECT USING (true);
-CREATE POLICY "Allow all operations for now" ON public.companies FOR ALL USING (true);
+
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'companies' AND policyname = 'Companies are viewable by everyone') THEN
+        CREATE POLICY "Companies are viewable by everyone" ON public.companies FOR SELECT USING (true);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'companies' AND policyname = 'Allow all operations for now') THEN
+        CREATE POLICY "Allow all operations for now" ON public.companies FOR ALL USING (true);
+    END IF;
+END $$;
 
 -- 4. APPLICATIONS TABLE
 CREATE TABLE IF NOT EXISTS public.applications (
@@ -64,16 +97,24 @@ CREATE TABLE IF NOT EXISTS public.applications (
   created_at timestamptz DEFAULT now()
 );
 ALTER TABLE public.applications ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Applications viewable by everyone" ON public.applications FOR SELECT USING (true);
-CREATE POLICY "Allow all operations for now" ON public.applications FOR ALL USING (true);
 
--- 5. MASTER ADMIN INSERT
--- This grants Dashboard access to the existing Auth user 'rsbredzo@gmail.com'
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'applications' AND policyname = 'Applications viewable by everyone') THEN
+        CREATE POLICY "Applications viewable by everyone" ON public.applications FOR SELECT USING (true);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'applications' AND policyname = 'Allow all operations for now') THEN
+        CREATE POLICY "Allow all operations for now" ON public.applications FOR ALL USING (true);
+    END IF;
+END $$;
+
+-- 5. MASTER ADMIN INSERT (Idempotent)
 INSERT INTO public.admins (email, name, role, code)
 VALUES ('rsbredzo@gmail.com', 'Redzep', 'master', '26f04')
 ON CONFLICT (email) DO UPDATE SET role = 'master';
 
--- 6. AUTOMATC USER PROFILE SYNC TRIGGER
+-- 6. TRIGGER
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
