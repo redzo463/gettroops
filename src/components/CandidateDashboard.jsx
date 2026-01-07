@@ -11,48 +11,49 @@ import {
 import { supabase } from "../lib/supabase";
 import ApplicationForm from "./ApplicationForm";
 
-const CandidateDashboard = ({ user, firebaseUser, setPage, isDemo }) => {
+const CandidateDashboard = ({ user, setPage, isDemo }) => {
   const [myApplications, setMyApplications] = useState([]);
   const [showApplyForm, setShowApplyForm] = useState(false);
   const [selectedApp, setSelectedApp] = useState(null);
 
   useEffect(() => {
-    if (isDemo && user) {
-      const allApps = JSON.parse(localStorage.getItem("demo_apps") || "[]");
-      // Filter applications by user email match or userId match
-      const myApps = allApps.filter(
-        (app) =>
-          (app.userId && app.userId === user.id) ||
-          (app.email && app.email.toLowerCase() === user.email.toLowerCase())
-      );
-      setMyApplications(myApps);
-    } else if (firebaseUser) {
-      // Fetch from Supabase
-      const fetchMyApps = async () => {
-        const { data, error } = await supabase
-          .from("applications")
-          .select("*")
-          .eq("user_id", firebaseUser.id) // Assuming user_id column
-          .order("created_at", { ascending: false });
+    // Priority 1: Use the Hydrated 'user' object (Auth + DB Profile)
+    if (user && user.role === "candidate") {
+      if (isDemo) {
+        // DEMO MODE
+        const allApps = JSON.parse(localStorage.getItem("demo_apps") || "[]");
+        const myApps = allApps.filter(
+          (app) =>
+            (app.userId && app.userId === user.id) ||
+            (app.email && app.email.toLowerCase() === user.email.toLowerCase())
+        );
+        setMyApplications(myApps);
+      } else {
+        // SUPABASE MODE
+        const fetchMyApps = async () => {
+          const { data, error } = await supabase
+            .from("applications")
+            .select("*")
+            .eq("user_id", user.id)
+            .order("created_at", { ascending: false });
 
-        if (error) {
-          console.error("Error fetching my apps:", error);
-        } else {
-          // Map fields
-          setMyApplications(
-            data.map((app) => ({
-              ...app,
-              createdAt: app.created_at,
-              placementLocation: app.placement_location,
-              // other fields if needed
-            }))
-          );
-        }
-      };
-
-      fetchMyApps();
+          if (error) {
+            console.error("Error fetching my apps:", error);
+          } else {
+            console.log("Fetched apps for:", user.email, data);
+            setMyApplications(
+              data.map((app) => ({
+                ...app,
+                createdAt: app.created_at,
+                placementLocation: app.placement_location,
+              }))
+            );
+          }
+        };
+        fetchMyApps();
+      }
     }
-  }, [user, firebaseUser, isDemo, showApplyForm]);
+  }, [user, isDemo, showApplyForm]);
 
   const getStatusStep = (status) => {
     switch (status) {
