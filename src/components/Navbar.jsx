@@ -153,7 +153,11 @@ const Navbar = ({ setPage, currentPage, currentUser, setCurrentUser }) => {
                         currentUser.role === "candidate" ? "dashboard" : "admin"
                       )
                     }
-                    className="h-9 w-9 bg-amber-500 rounded-full flex items-center justify-center text-slate-900 hover:bg-white transition-all shadow-lg shadow-amber-500/20"
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-slate-900 transition-all shadow-lg hover:bg-white ${
+                      currentUser.role === "candidate"
+                        ? "bg-amber-500 shadow-amber-500/20"
+                        : "bg-red-500 text-white shadow-red-500/20 hover:text-red-500"
+                    }`}
                     title={
                       currentUser.role === "candidate"
                         ? "Moj Dashboard"
@@ -161,9 +165,15 @@ const Navbar = ({ setPage, currentPage, currentUser, setCurrentUser }) => {
                     }
                   >
                     {currentUser.role === "candidate" ? (
-                      <User size={18} />
+                      <>
+                        <User size={18} />
+                        <span>Dashboard</span>
+                      </>
                     ) : (
-                      <ShieldAlert size={18} />
+                      <>
+                        <ShieldAlert size={18} />
+                        <span>Admin Panel</span>
+                      </>
                     )}
                   </button>
                 </div>

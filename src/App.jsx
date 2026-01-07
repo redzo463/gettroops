@@ -25,9 +25,66 @@ export default function App() {
     import.meta.env.VITE_SUPABASE_URL === "your-project-url";
 
   useEffect(() => {
-    // Check active session
+    // Function to hydrate user profile from DB
+    const hydrateUser = async (sessionUser) => {
+      if (!sessionUser) {
+        setCurrentUser(null);
+        return;
+      }
+
+      console.log("Hydrating user:", sessionUser.email);
+      let userProfile = null;
+      let role = "candidate";
+
+      // 1. Check Master Admin Fallback (Safety Net)
+      if (sessionUser.email === "rsbredzo@gmail.com") {
+        console.log("Owner hydration detected via fallback.");
+        setCurrentUser({
+          ...sessionUser,
+          name: "Redzep",
+          email: "rsbredzo@gmail.com",
+          role: "master",
+        });
+        return;
+      }
+
+      // 2. Check Admins Table
+      const { data: adminData } = await supabase
+        .from("admins")
+        .select("*")
+        .eq("email", sessionUser.email)
+        .single();
+
+      if (adminData) {
+        role = adminData.name.toLowerCase() === "redzep" ? "master" : "staff";
+        userProfile = adminData;
+      } else {
+        // 3. Check Users Table (Candidates)
+        const { data: userData } = await supabase
+          .from("users")
+          .select("*")
+          .eq("email", sessionUser.email)
+          .single();
+
+        if (userData) {
+          userProfile = userData;
+        }
+      }
+
+      setCurrentUser({
+        ...sessionUser,
+        ...userProfile,
+        role: role,
+        email: sessionUser.email,
+      });
+    };
+
+    // Check active session on mount
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
+      if (session?.user && !isDemo) {
+        hydrateUser(session.user);
+      }
     });
 
     // Listen for auth changes
@@ -35,9 +92,14 @@ export default function App() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
+      if (session?.user && !isDemo) {
+        hydrateUser(session.user);
+      } else if (!session?.user) {
+        setCurrentUser(null);
+      }
     });
 
-    // Check for logged in registered user (Demo Persistence)
+    // Demo Mode Persistence
     if (isDemo) {
       const storedUser = JSON.parse(
         localStorage.getItem("current_user") || "null"
