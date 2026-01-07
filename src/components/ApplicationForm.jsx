@@ -11,13 +11,11 @@ import {
   ArrowRight,
   Loader,
 } from "lucide-react";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { supabase } from "../lib/supabase";
 
 const ApplicationForm = ({
   user,
   currentUser,
-  db,
-  appId,
   setPage,
   isDemo,
   onSuccess,
@@ -140,15 +138,22 @@ const ApplicationForm = ({
 
         console.log("Demo Mode: Application saved to local storage", newApp);
       } else {
-        await addDoc(
-          collection(db, "artifacts", appId, "public", "data", "applications"),
+        const { error } = await supabase.from("applications").insert([
           {
-            ...formData,
+            first_name: formData.firstName,
+            last_name: formData.lastName,
+            email: formData.email,
+            phone: formData.phone,
+            position: formData.position,
+            experience: formData.experience,
+            about: formData.about,
+            cv_name: formData.cvName,
             status: "new",
-            createdAt: serverTimestamp(),
-            userId: user.uid,
-          }
-        );
+            user_id: user.id,
+            created_at: new Date(),
+          },
+        ]);
+        if (error) throw error;
       }
 
       setSuccess(true);

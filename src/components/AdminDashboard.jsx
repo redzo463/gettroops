@@ -23,25 +23,9 @@ import {
   FileText,
   Building,
 } from "lucide-react";
-import {
-  collection,
-  onSnapshot,
-  deleteDoc,
-  doc,
-  updateDoc,
-  serverTimestamp,
-  addDoc,
-} from "firebase/firestore";
+import { supabase } from "../lib/supabase";
 
-const AdminDashboard = ({
-  user,
-  setPage,
-  setAdminUser,
-  adminUser,
-  db,
-  appId,
-  isDemo,
-}) => {
+const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
   const [apps, setApps] = useState([]);
   const [registeredUsers, setRegisteredUsers] = useState([]); // All registered users (candidates)
   const [loading, setLoading] = useState(true);
@@ -199,33 +183,41 @@ const AdminDashboard = ({
         setLoading(false);
       }
     } else {
-      // Firestore logic
-      const simpleQ = collection(
-        db,
-        "artifacts",
-        appId,
-        "public",
-        "data",
-        "applications"
-      );
-      // ... (standard firestore fetch)
-      const unsubscribeApps = onSnapshot(
-        simpleQ,
-        (snapshot) => {
-          const data = snapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
+      // Supabase logic
+      const fetchApps = async () => {
+        const { data, error } = await supabase.from("applications").select("*");
+
+        if (error) {
+          console.error("Error fetching applications:", error);
+        } else {
+          // Map to camelCase
+          const mappedData = data.map((app) => ({
+            ...app,
+            firstName: app.first_name,
+            lastName: app.last_name,
+            createdAt: app.created_at,
+            placementFee: app.placement_fee,
+            placementLocation: app.placement_location,
+            hiredBy: app.hired_by,
+            hiredAt: app.hired_at,
           }));
-          data.sort(
-            (a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)
-          );
-          setApps(data);
-          calculateStats(data);
+
+          mappedData.sort((a, b) => {
+            const dateA = new Date(a.createdAt);
+            const dateB = new Date(b.createdAt);
+            return dateB - dateA;
+          });
+
+          setApps(mappedData);
+          calculateStats(mappedData);
           setLoading(false);
-        },
-        (error) => console.error("Firestore read error:", error)
-      );
-      return () => unsubscribeApps();
+        }
+      };
+
+      fetchApps();
+
+      // Simple Polling (optional, every 30s) or Realtime
+      // For now, just fetch once.
     }
 
     // Fetch Registered Users (Candidates) for Master
@@ -292,8 +284,19 @@ const AdminDashboard = ({
 
         setRegisteredUsers(users);
       }
-      // Note: If using Firestore, we would need a separate fetch/snapshot for users collection
-      // For now we only implement demo mode users
+      // Supabase Users Fetch
+      const fetchUsers = async () => {
+        const { data } = await supabase.from("users").select("*");
+        if (data) {
+          setRegisteredUsers(
+            data.map((u) => ({
+              ...u,
+              createdAt: u.created_at,
+            }))
+          );
+        }
+      };
+      fetchUsers();
     }
 
     // Fetch Team (Only if Master)
@@ -306,48 +309,101 @@ const AdminDashboard = ({
         );
         setExistingAdmins(storedAdmins);
       } else {
-        const teamQ = collection(
-          db,
-          "artifacts",
-          appId,
-          "public",
-          "data",
-          "admins"
-        );
-        unsubscribeTeam = onSnapshot(teamQ, (snapshot) => {
-          const data = snapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          }));
-          setExistingAdmins(data);
-          setExistingAdmins(data);
-        });
+        const fetchTeam = async () => {
+          const { data } = await supabase.from("admins").select("*");
+          if (data) {
+            setExistingAdmins(
+              data.map((admin) => ({
+                ...admin,
+                createdBy: admin.created_by,
+                createdAt: admin.created_at,
+              }))
+            );
+          }
+        };
+        fetchTeam();
       }
     }
 
     // Fetch Companies
+    // Fetch Companies
     let unsubscribeCompanies = () => {};
     if (isDemo) {
-      const storedCompanies = JSON.parse(
-        localStorage.getItem("demo_companies") || "[]"
+      let storedCompanies = JSON.parse(
+        localStorage.getItem("demo_companies") || "null"
       );
+
+      if (!storedCompanies || storedCompanies.length === 0) {
+        storedCompanies = [
+          {
+            id: "comp-1",
+            name: "Tech Solutions d.o.o.",
+            address: "Zmaja od Bosne 7, Sarajevo",
+            contactPerson: "Adnan Hadžić",
+            email: "info@techsolutions.ba",
+            phone: "+387 33 111 222",
+            positions: "Software Engineer, UI Designer",
+            workerCount: "50",
+            salaryRange: "2000 - 5000 KM",
+            notes: "Traže iskusne inženjere.",
+            website: "www.techsolutions.ba",
+            status: "Active",
+            createdAt: { seconds: Date.now() / 1000 - 86400 * 30 },
+            createdBy: "System",
+          },
+          {
+            id: "comp-2",
+            name: "Hotel Grand",
+            address: "Maršala Tita 10, Sarajevo",
+            contactPerson: "Lejla Babić",
+            email: "hr@hotelgrand.ba",
+            phone: "+387 33 333 444",
+            positions: "Konobar, Kuhar, Sobarica",
+            workerCount: "120",
+            salaryRange: "1200 - 2000 KM",
+            notes: "Hitno trebaju kuhare.",
+            website: "www.hotelgrand.ba",
+            status: "Active",
+            createdAt: { seconds: Date.now() / 1000 - 86400 * 60 },
+            createdBy: "System",
+          },
+          {
+            id: "comp-3",
+            name: "Global Logistics",
+            address: "Halilovići 5, Sarajevo",
+            contactPerson: "Mirza Dedić",
+            email: "mirza@global.ba",
+            phone: "+387 61 555 666",
+            positions: "Vozač, Skladištar",
+            workerCount: "30",
+            salaryRange: "1500 - 2500 KM",
+            notes: "Fleksibilno radno vrijeme.",
+            website: "www.global-logistics.ba",
+            status: "Inactive",
+            createdAt: { seconds: Date.now() / 1000 - 86400 * 10 },
+            createdBy: "System",
+          },
+        ];
+        localStorage.setItem("demo_companies", JSON.stringify(storedCompanies));
+      }
       setCompanies(storedCompanies);
     } else {
-      const companiesQ = collection(
-        db,
-        "artifacts",
-        appId,
-        "public",
-        "data",
-        "companies"
-      );
-      unsubscribeCompanies = onSnapshot(companiesQ, (snapshot) => {
-        const data = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-        setCompanies(data);
-      });
+      const fetchCompanies = async () => {
+        const { data } = await supabase.from("companies").select("*");
+        if (data) {
+          setCompanies(
+            data.map((c) => ({
+              ...c,
+              contactPerson: c.contact_person,
+              workerCount: c.worker_count,
+              salaryRange: c.salary_range,
+              createdAt: c.created_at,
+              createdBy: c.created_by,
+            }))
+          );
+        }
+      };
+      fetchCompanies();
     }
 
     return () => {
@@ -369,8 +425,13 @@ const AdminDashboard = ({
       if (app.status === "hired" && app.placementFee) {
         const fee = parseFloat(app.placementFee) || 0;
         total += fee;
-        if (app.hiredAt && app.hiredAt.seconds) {
-          const hiredDate = new Date(app.hiredAt.seconds * 1000);
+
+        const hiredAt = app.hiredAt;
+        if (hiredAt) {
+          const hiredDate = hiredAt.seconds
+            ? new Date(hiredAt.seconds * 1000)
+            : new Date(hiredAt);
+
           if (hiredDate.getFullYear() === now.getFullYear()) {
             year += fee;
             if (hiredDate.getMonth() === now.getMonth()) month += fee;
@@ -405,9 +466,19 @@ const AdminDashboard = ({
         });
         setToast({ message: `Status ažuriran: ${newStatus}`, type: "success" });
       } else {
-        await updateDoc(
-          doc(db, "artifacts", appId, "public", "data", "applications", id),
-          { status: newStatus }
+        if (isDemo) {
+          // ... (Demo logic maps same state) check existing
+        }
+
+        await supabase
+          .from("applications")
+          .update({ status: newStatus })
+          .eq("id", id);
+
+        setApps((prev) =>
+          prev.map((app) =>
+            app.id === id ? { ...app, status: newStatus } : app
+          )
         );
       }
     } catch (err) {
@@ -446,23 +517,30 @@ const AdminDashboard = ({
           type: "success",
         });
       } else {
-        await updateDoc(
-          doc(
-            db,
-            "artifacts",
-            appId,
-            "public",
-            "data",
-            "applications",
-            hiringApp.id
-          ),
-          {
+        await supabase
+          .from("applications")
+          .update({
             status: "hired",
-            placementLocation: hireLocation,
-            placementFee: parseFloat(hireFee),
-            hiredAt: serverTimestamp(),
-            hiredBy: adminUser.name,
-          }
+            placement_location: hireLocation,
+            placement_fee: parseFloat(hireFee),
+            hired_at: new Date(),
+            hired_by: adminUser.name,
+          })
+          .eq("id", hiringApp.id);
+
+        setApps((prev) =>
+          prev.map((app) =>
+            app.id === hiringApp.id
+              ? {
+                  ...app,
+                  status: "hired",
+                  placementLocation: hireLocation,
+                  placementFee: parseFloat(hireFee),
+                  hiredAt: new Date(),
+                  hiredBy: adminUser.name,
+                }
+              : app
+          )
         );
         setHiringApp(null);
         setHireLocation("");
@@ -508,15 +586,32 @@ const AdminDashboard = ({
         setNewAdminCode("");
         setToast({ message: "Kolega uspješno dodan! (Demo)", type: "success" });
       } else {
-        await addDoc(
-          collection(db, "artifacts", appId, "public", "data", "admins"),
-          {
-            name: newAdminName,
-            code: newAdminCode,
-            createdBy: adminUser.name,
-            createdAt: serverTimestamp(),
-          }
-        );
+        const { data, error } = await supabase
+          .from("admins")
+          .insert([
+            {
+              name: newAdminName,
+              code: newAdminCode,
+              created_by: adminUser.name,
+              created_at: new Date(),
+            },
+          ])
+          .select();
+
+        if (data) {
+          const newAdmin = {
+            id: data[0].id,
+            name: data[0].name,
+            code: data[0].code,
+            createdBy: data[0].created_by,
+            createdAt: data[0].created_at,
+          };
+          setExistingAdmins((prev) => [...prev, newAdmin]);
+        }
+
+        setNewAdminName("");
+        setNewAdminCode("");
+        setToast({ message: "Kolega uspješno dodan!", type: "success" });
         setNewAdminName("");
         setNewAdminCode("");
         setToast({ message: "Kolega uspješno dodan!", type: "success" });
@@ -565,9 +660,9 @@ const AdminDashboard = ({
           type: "success",
         });
       } else {
-        await deleteDoc(
-          doc(db, "artifacts", appId, "public", "data", "admins", id)
-        );
+        await supabase.from("admins").delete().eq("id", id);
+        setExistingAdmins((prev) => prev.filter((a) => a.id !== id));
+        setToast({ message: "Administrator obrisan", type: "success" });
         // Firestore logic for downgrading user would go here (updateDoc on user)
         setToast({ message: "Administrator obrisan", type: "success" });
       }
@@ -608,17 +703,20 @@ const AdminDashboard = ({
             type: "success",
           });
         } else {
-          await updateDoc(
-            doc(
-              db,
-              "artifacts",
-              appId,
-              "public",
-              "data",
-              "companies",
-              editingCompany.id
-            ),
-            companyData
+          await supabase
+            .from("companies")
+            .update({
+              ...companyData,
+              contact_person: companyData.contactPerson,
+              worker_count: companyData.workerCount,
+              salary_range: companyData.salaryRange,
+            })
+            .eq("id", editingCompany.id);
+
+          setCompanies((prev) =>
+            prev.map((c) =>
+              c.id === editingCompany.id ? { ...c, ...companyData } : c
+            )
           );
           setToast({ message: "Podaci o firmi ažurirani", type: "success" });
         }
@@ -641,14 +739,29 @@ const AdminDashboard = ({
             type: "success",
           });
         } else {
-          await addDoc(
-            collection(db, "artifacts", appId, "public", "data", "companies"),
-            {
+          const { data, error } = await supabase
+            .from("companies")
+            .insert([
+              {
+                ...companyData,
+                contact_person: companyData.contactPerson,
+                worker_count: companyData.workerCount,
+                salary_range: companyData.salaryRange,
+                created_at: new Date(),
+                created_by: adminUser.name,
+              },
+            ])
+            .select();
+
+          if (data) {
+            const newCo = {
+              id: data[0].id,
               ...companyData,
-              createdAt: serverTimestamp(),
-              createdBy: adminUser.name,
-            }
-          );
+              createdAt: data[0].created_at,
+              createdBy: data[0].created_by,
+            };
+            setCompanies((prev) => [newCo, ...prev]);
+          }
           setToast({ message: "Kompanija uspješno dodana", type: "success" });
         }
       }
@@ -722,9 +835,8 @@ const AdminDashboard = ({
         });
         setToast({ message: "Kompanija obrisana (Demo)", type: "success" });
       } else {
-        await deleteDoc(
-          doc(db, "artifacts", appId, "public", "data", "companies", id)
-        );
+        await supabase.from("companies").delete().eq("id", id);
+        setCompanies((prev) => prev.filter((c) => c.id !== id));
         setToast({ message: "Kompanija obrisana", type: "success" });
       }
     } catch (error) {
@@ -755,9 +867,9 @@ const AdminDashboard = ({
         });
         setToast({ message: "Prijava obrisana (Demo)", type: "success" });
       } else {
-        await deleteDoc(
-          doc(db, "artifacts", appId, "public", "data", "applications", id)
-        );
+        await supabase.from("applications").delete().eq("id", id);
+        setApps((prev) => prev.filter((a) => a.id !== id));
+        setToast({ message: "Prijava obrisana", type: "success" });
         setToast({ message: "Prijava obrisana", type: "success" });
       }
     } catch (err) {

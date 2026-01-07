@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Mail, Lock, User, ArrowRight, Loader } from "lucide-react";
+import { supabase } from "../lib/supabase";
 
 const UserAuth = ({ setCurrentUser, setPage, isDemo }) => {
   const [isLogin, setIsLogin] = useState(true);
@@ -91,11 +92,100 @@ const UserAuth = ({ setCurrentUser, setPage, isDemo }) => {
           }
         }
       } else {
-        // Placeholder for Firebase Auth (not fully requested yet, focusing on Demo consistency)
-        alert("Firebase Auth nije konfigurisan za ovaj demo.");
+        // SUPABASE LOGIC
+        if (isLogin) {
+          const { data, error } = await supabase.auth.signInWithPassword({
+            email: formData.email,
+            password: formData.password,
+          });
+
+          if (error) throw error;
+
+          // Fetch user details (Role)
+          // Try to find in Admins first
+          let role = "candidate";
+          let userProfile = null;
+
+          // Check if Admin
+          const { data: adminData } = await supabase
+            .from("admins")
+            .select("*")
+            .eq("email", formData.email)
+            .single();
+
+          if (adminData) {
+            role =
+              adminData.name.toLowerCase() === "redzep" ? "master" : "staff";
+            userProfile = adminData;
+          } else {
+            // Check if Candidate
+            const { data: candidateData } = await supabase
+              .from("users")
+              .select("*")
+              .eq("email", formData.email)
+              .single(); // Assuming 'users' table holds candidates
+
+            if (candidateData) {
+              userProfile = candidateData;
+            }
+          }
+
+          const userData = {
+            ...data.session.user,
+            ...userProfile,
+            role: role, // Default to candidate if not found in admins
+            email: formData.email, // Ensure email is present
+          };
+
+          setCurrentUser(userData);
+          setPage(
+            role === "master" || role === "staff" ? "admin" : "dashboard"
+          );
+        } else {
+          // Register
+          const { data, error } = await supabase.auth.signUp({
+            email: formData.email,
+            password: formData.password,
+            options: {
+              data: {
+                full_name: formData.name,
+              },
+            },
+          });
+
+          if (error) throw error;
+
+          // Create base user profile in 'users' table
+          // Note: Ideally this is done via Trigger, but for simplicity:
+          const { error: profileError } = await supabase.from("users").insert([
+            {
+              id: data.user.id,
+              email: formData.email,
+              name: formData.name,
+              role: "candidate",
+              created_at: new Date(),
+            },
+          ]);
+
+          if (profileError)
+            console.error("Error creating profile:", profileError);
+
+          const newUser = {
+            ...data.user,
+            name: formData.name,
+            role: "candidate",
+          };
+          setCurrentUser(newUser);
+          setPage("dashboard");
+
+          alert(
+            "Registracija uspješna! Molimo provjerite email za potvrdu računa (ako je omogućeno)."
+          );
+        }
       }
     } catch (err) {
-      setError("Došlo je do greške.");
+      console.error(err);
+      setError(err.message || "Došlo je do greške.");
     } finally {
       setLoading(false);
     }

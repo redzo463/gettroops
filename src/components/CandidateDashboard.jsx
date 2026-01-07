@@ -8,23 +8,10 @@ import {
   User,
   X,
 } from "lucide-react";
-import {
-  collection,
-  query,
-  where,
-  onSnapshot,
-  orderBy,
-} from "firebase/firestore";
+import { supabase } from "../lib/supabase";
 import ApplicationForm from "./ApplicationForm";
 
-const CandidateDashboard = ({
-  user,
-  firebaseUser,
-  setPage,
-  isDemo,
-  db,
-  appId,
-}) => {
+const CandidateDashboard = ({ user, firebaseUser, setPage, isDemo }) => {
   const [myApplications, setMyApplications] = useState([]);
   const [showApplyForm, setShowApplyForm] = useState(false);
   const [selectedApp, setSelectedApp] = useState(null);
@@ -39,32 +26,33 @@ const CandidateDashboard = ({
           (app.email && app.email.toLowerCase() === user.email.toLowerCase())
       );
       setMyApplications(myApps);
-    } else if (firebaseUser && db && appId) {
-      // Fetch from Firestore with real-time updates
-      const q = query(
-        collection(db, "artifacts", appId, "public", "data", "applications"),
-        where("userId", "==", firebaseUser.uid),
-        orderBy("createdAt", "desc")
-      );
+    } else if (firebaseUser) {
+      // Fetch from Supabase
+      const fetchMyApps = async () => {
+        const { data, error } = await supabase
+          .from("applications")
+          .select("*")
+          .eq("user_id", firebaseUser.id) // Assuming user_id column
+          .order("created_at", { ascending: false });
 
-      const unsubscribe = onSnapshot(
-        q,
-        (querySnapshot) => {
-          const myApps = querySnapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          }));
-          setMyApplications(myApps);
-        },
-        (error) => {
-          console.error("Error fetching applications:", error);
+        if (error) {
+          console.error("Error fetching my apps:", error);
+        } else {
+          // Map fields
+          setMyApplications(
+            data.map((app) => ({
+              ...app,
+              createdAt: app.created_at,
+              placementLocation: app.placement_location,
+              // other fields if needed
+            }))
+          );
         }
-      );
+      };
 
-      // Cleanup subscription on unmount
-      return () => unsubscribe();
+      fetchMyApps();
     }
-  }, [user, firebaseUser, isDemo, db, appId, showApplyForm]);
+  }, [user, firebaseUser, isDemo, showApplyForm]);
 
   const getStatusStep = (status) => {
     switch (status) {
@@ -90,8 +78,6 @@ const CandidateDashboard = ({
       <ApplicationForm
         user={firebaseUser}
         currentUser={user}
-        db={db}
-        appId={appId}
         setPage={setPage}
         isDemo={isDemo}
         onSuccess={() => setShowApplyForm(false)}

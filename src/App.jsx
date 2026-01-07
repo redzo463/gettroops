@@ -1,12 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { initializeApp } from "firebase/app";
-import {
-  getAuth,
-  signInWithCustomToken,
-  signInAnonymously,
-  onAuthStateChanged,
-} from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { supabase } from "./lib/supabase";
 
 // Components
 import Navbar from "./components/Navbar";
@@ -21,46 +14,27 @@ import CandidateDashboard from "./components/CandidateDashboard";
 import About from "./components/About";
 import Contact from "./components/Contact";
 
-// --- Firebase INIT ---
-const defaultFirebaseConfig = {
-  apiKey: "your-api-key",
-  authDomain: "your-project.firebaseapp.com",
-  projectId: "your-project-id",
-  storageBucket: "your-project.appspot.com",
-  messagingSenderId: "00000000000",
-  appId: "1:00000000000:web:00000000000000",
-};
-
-const firebaseConfig =
-  typeof __firebase_config !== "undefined"
-    ? JSON.parse(__firebase_config)
-    : defaultFirebaseConfig;
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const appId = typeof __app_id !== "undefined" ? __app_id : "default-app-id";
-
 export default function App() {
   const [page, setPage] = useState("home");
-  const [user, setUser] = useState(null); // Firebase User (Technical)
+  const [user, setUser] = useState(null); // Supabase User (Technical)
   const [currentUser, setCurrentUser] = useState(null); // Registered User (Application User)
 
   // Detect if we are using the placeholder config
-  const isDemo = firebaseConfig.apiKey === "your-api-key";
+  const isDemo =
+    !import.meta.env.VITE_SUPABASE_URL ||
+    import.meta.env.VITE_SUPABASE_URL === "your-project-url";
 
   useEffect(() => {
-    const initAuth = async () => {
-      if (typeof __initial_auth_token !== "undefined" && __initial_auth_token) {
-        await signInWithCustomToken(auth, __initial_auth_token);
-      } else {
-        await signInAnonymously(auth);
-      }
-    };
-    initAuth();
+    // Check active session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
 
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
     });
 
     // Check for logged in registered user (Demo Persistence)
@@ -73,8 +47,8 @@ export default function App() {
       }
     }
 
-    return () => unsubscribe();
-  }, []);
+    return () => subscription.unsubscribe();
+  }, [isDemo]);
 
   return (
     <div className="font-sans text-gray-900 bg-slate-50 min-h-screen flex flex-col">
@@ -107,8 +81,6 @@ export default function App() {
               setPage={setPage}
               adminUser={currentUser} // Use currentUser as adminUser
               setAdminUser={setCurrentUser} // Allow updating currentUser
-              db={db}
-              appId={appId}
               isDemo={isDemo}
             />
           )}
@@ -129,8 +101,6 @@ export default function App() {
             firebaseUser={user}
             setPage={setPage}
             isDemo={isDemo}
-            db={db}
-            appId={appId}
           />
         )}
 
