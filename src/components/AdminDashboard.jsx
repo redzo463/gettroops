@@ -84,7 +84,17 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
   }, [toast]);
 
   useEffect(() => {
-    if (!user && !isDemo) return;
+    console.log("AdminDashboard Mounted. AdminUser:", adminUser);
+    if (!user && !isDemo) {
+      console.warn("No Supabase User session found in AdminDashboard");
+      return;
+    }
+    // ... existing logic ...
+
+    // Safety check for adminUser
+    if (!adminUser) {
+      console.error("AdminUser prop is missing!");
+    }
 
     // Fetch Applications
     if (isDemo) {
@@ -1114,13 +1124,15 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
           </div>
           <div className="flex items-center gap-4">
             <div className="text-right hidden sm:block">
-              <p className="text-sm font-bold text-white">{adminUser.name}</p>
+              <p className="text-sm font-bold text-white">
+                {adminUser?.name || "Administrator"}
+              </p>
               <p className="text-[10px] text-amber-500 uppercase font-semibold tracking-wider">
-                {adminUser.role === "master" ? "Master Admin" : "Staff Member"}
+                {adminUser?.role === "master" ? "Master Admin" : "Staff Member"}
               </p>
             </div>
             <div className="h-10 w-10 bg-gradient-to-br from-amber-400 to-amber-600 rounded-full flex items-center justify-center text-slate-900 font-bold shadow-lg shadow-amber-500/20">
-              {adminUser.name[0]}
+              {adminUser?.name?.[0]?.toUpperCase() || "A"}
             </div>
           </div>
         </header>
