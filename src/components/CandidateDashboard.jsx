@@ -77,7 +77,7 @@ const CandidateDashboard = ({ user, setPage, isDemo }) => {
   if (showApplyForm) {
     return (
       <ApplicationForm
-        user={firebaseUser}
+        user={user}
         currentUser={user}
         setPage={setPage}
         isDemo={isDemo}

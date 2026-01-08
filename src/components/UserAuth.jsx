@@ -69,31 +69,37 @@ const UserAuth = ({ setCurrentUser, setPage, isDemo }) => {
                 : "dashboard"
             );
           } else {
-            setError("Pogrešan email ili lozinka.");
+            setError(
+              "DEMO MODE: Korisnik nije pronađen. Za admin pristup koristite: rsbredzo@gmail.com / 26f04"
+            );
           }
         } else {
-          // REGISTER LOGIC
+          // DEMO REGISTER LOGIC
           if (users.some((u) => u.email === formData.email)) {
-            setError("Korisnik sa ovim emailom već postoji.");
+            setError("Korisnik sa ovim emailom već postoji (Local Storage).");
           } else {
             const newUser = {
               id: `user-${Date.now()}`,
               name: formData.name,
               email: formData.email,
               password: formData.password,
-              role: "candidate", // Default role
+              role: "candidate",
               createdAt: new Date().toISOString(),
             };
+
+            console.log("Saving new Demo User:", newUser);
             const updatedUsers = [...users, newUser];
             localStorage.setItem("demo_users", JSON.stringify(updatedUsers));
             localStorage.setItem("current_user", JSON.stringify(newUser));
             setCurrentUser(newUser);
+            alert("Registracija uspješna (Demo Mode)! Sada ste prijavljeni.");
             setPage("dashboard");
           }
         }
       } else {
-        // SUPABASE LOGIC
+        // SUPABASE LOGIC (Mode: !isDemo)
         if (isLogin) {
+          // LOGIN
           const { data, error } = await supabase.auth.signInWithPassword({
             email: formData.email,
             password: formData.password,
@@ -101,92 +107,62 @@ const UserAuth = ({ setCurrentUser, setPage, isDemo }) => {
 
           if (error) throw error;
 
-          // Fetch user details (Role)
-          console.log(
-            "Login successful. Checking Admin status for:",
-            formData.email
-          );
+          console.log("Login successful:", formData.email);
 
-          // Try to find in Admins first
+          // Role Check
           let role = "candidate";
           let userProfile = null;
 
-          // Check if Admin
-          const { data: adminData, error: adminError } = await supabase
+          const { data: adminData } = await supabase
             .from("admins")
             .select("*")
             .eq("email", formData.email.toLowerCase())
             .single();
 
-          if (adminError) {
-            console.warn(
-              "Admin check error (or not found):",
-              adminError.message
-            );
-          } else {
-            console.log("Admin Data Found:", adminData);
-          }
-
           if (adminData) {
             role =
               adminData.name.toLowerCase() === "redzep" ? "master" : "staff";
             userProfile = adminData;
-            console.log("Assigned Role:", role);
           } else if (formData.email.toLowerCase() === "rsbredzo@gmail.com") {
-            // Safety Net: Always allow the owner to be Master Admin
-            console.log("⚠️ Owner Detected (Fallback): Forcing 'master' role.");
             role = "master";
             userProfile = {
               name: "Redzep",
               email: "rsbredzo@gmail.com",
               role: "master",
-              id: "master-fallback",
             };
           } else {
-            console.log("User is not an admin. Checking Candidate profile...");
-            // Check if Candidate
             const { data: candidateData } = await supabase
               .from("users")
               .select("*")
               .eq("email", formData.email)
-              .single(); // Assuming 'users' table holds candidates
-
-            if (candidateData) {
-              userProfile = candidateData;
-            }
+              .single();
+            if (candidateData) userProfile = candidateData;
           }
 
           const userData = {
             ...data.session.user,
             ...userProfile,
-            role: role, // Default to candidate if not found in admins
-            email: formData.email, // Ensure email is present
+            role: role,
+            email: formData.email,
           };
-
-          console.log("Final User Data:", userData);
-          const targetPage =
-            role === "master" || role === "staff" ? "admin" : "dashboard";
-          console.log("Redirecting to:", targetPage);
-
           setCurrentUser(userData);
-          setPage(targetPage);
+          setPage(
+            role === "master" || role === "staff" ? "admin" : "dashboard"
+          );
         } else {
-          // Register
+          // REGISTER
           const { data, error } = await supabase.auth.signUp({
             email: formData.email,
             password: formData.password,
-            options: {
-              data: {
-                full_name: formData.name,
-              },
-            },
+            options: { data: { full_name: formData.name } },
           });
 
           if (error) throw error;
 
-          // Create base user profile in 'users' table
-          // Note: Ideally this is done via Trigger, but for simplicity:
-          const { error: profileError } = await supabase.from("users").insert([
+          console.log("Supabase SignUp Result:", data);
+
+          // Create Profile (Safely with Upsert)
+          const { error: profileError } = await supabase.from("users").upsert([
             {
               id: data.user.id,
               email: formData.email,
@@ -194,11 +170,22 @@ const UserAuth = ({ setCurrentUser, setPage, isDemo }) => {
               role: "candidate",
               created_at: new Date(),
             },
+            // On conflict, update nothing (or update name)
           ]);
 
           if (profileError)
             console.error("Error creating profile:", profileError);
 
+          // Check Email Confirmation
+          if (data.user && !data.session) {
+            alert(
+              "Registracija uspješna! Molimo provjerite svoj email i potvrdite račun prije prijave."
+            );
+            setIsLogin(true);
+            return;
+          }
+
+          // Auto-login
           const newUser = {
             ...data.user,
             name: formData.name,
@@ -206,10 +193,7 @@ const UserAuth = ({ setCurrentUser, setPage, isDemo }) => {
           };
           setCurrentUser(newUser);
           setPage("dashboard");
-
-          alert(
-            "Registracija uspješna! Molimo provjerite email za potvrdu računa (ako je omogućeno)."
-          );
+          alert("Registracija uspješna! Dobrodošli.");
         }
       }
     } catch (err) {
@@ -239,6 +223,17 @@ const UserAuth = ({ setCurrentUser, setPage, isDemo }) => {
               : "Registrujte se za početak karijere"}
           </p>
         </div>
+
+        {isDemo && (
+          <div className="mb-6 bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 text-center">
+            <p className="text-amber-200 text-sm font-semibold">
+              ⚠️ DEMO MODE ACTIVE
+            </p>
+            <p className="text-amber-500/70 text-xs mt-1">
+              Database connection missing. Using local memory only.
+            </p>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {!isLogin && (

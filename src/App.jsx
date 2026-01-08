@@ -13,6 +13,7 @@ import CandidateDashboard from "./components/CandidateDashboard";
 
 import About from "./components/About";
 import Contact from "./components/Contact";
+import { Loader } from "lucide-react";
 
 export default function App() {
   const [page, setPage] = useState("home");
@@ -180,13 +181,19 @@ export default function App() {
           />
         )}
 
-        {page === "dashboard" && currentUser && (
-          <CandidateDashboard
-            user={currentUser}
-            setPage={setPage}
-            isDemo={isDemo}
-          />
-        )}
+        {page === "dashboard" &&
+          (currentUser ? (
+            <CandidateDashboard
+              user={currentUser}
+              setPage={setPage}
+              isDemo={isDemo}
+            />
+          ) : (
+            <div className="flex items-center justify-center min-h-screen bg-slate-900 text-white">
+              <Loader className="animate-spin h-8 w-8 text-amber-500 mb-4" />
+              <p>Učitavanje korisničkog profila...</p>
+            </div>
+          ))}
 
         {page === "about" && <About />}
         {page === "contact" && <Contact />}
