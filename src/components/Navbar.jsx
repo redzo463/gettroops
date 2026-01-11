@@ -92,7 +92,6 @@ const Navbar = ({ setPage, currentPage, currentUser, setCurrentUser }) => {
                   }`}
                 ></span>
               </button>
-
               <button
                 onClick={() => setPage("about")}
                 className={`text-sm font-medium transition-all duration-300 relative group ${
@@ -110,7 +109,6 @@ const Navbar = ({ setPage, currentPage, currentUser, setCurrentUser }) => {
                   }`}
                 ></span>
               </button>
-
               <button
                 onClick={() => setPage("contact")}
                 className={`text-sm font-medium transition-all duration-300 relative group ${
@@ -128,9 +126,7 @@ const Navbar = ({ setPage, currentPage, currentUser, setCurrentUser }) => {
                   }`}
                 ></span>
               </button>
-
               {/* Call to Action Button */}
-
               {currentUser ? (
                 <div className="flex items-center gap-3 pl-4 border-l border-slate-700/50">
                   <div className="flex items-center gap-3 bg-slate-800/50 p-1 pl-3 pr-1 rounded-full border border-slate-700 hover:border-amber-500/30 transition-all">
@@ -145,6 +141,19 @@ const Navbar = ({ setPage, currentPage, currentUser, setCurrentUser }) => {
                       <LogOut size={14} />
                     </button>
                   </div>
+
+                  {/* Dashboard Link for Admins */}
+                  {(currentUser.role === "staff" ||
+                    currentUser.role === "master") && (
+                    <button
+                      onClick={() => setPage("dashboard")}
+                      className="flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-slate-900 transition-all shadow-lg hover:bg-white bg-amber-500 shadow-amber-500/20"
+                      title="Moj Dashboard"
+                    >
+                      <User size={18} />
+                      <span>Dashboard</span>
+                    </button>
+                  )}
 
                   {/* Dashboard/Admin Link */}
                   <button
@@ -253,6 +262,21 @@ const Navbar = ({ setPage, currentPage, currentUser, setCurrentUser }) => {
             <Phone size={24} /> Kontakt
           </button>
           <div className="border-t border-slate-800 my-4"></div>
+
+          {/* Dashboard Link for Admins (Mobile) */}
+          {currentUser &&
+            (currentUser.role === "staff" || currentUser.role === "master") && (
+              <button
+                onClick={() => {
+                  setPage("dashboard");
+                  setIsOpen(false);
+                }}
+                className="flex items-center justify-center gap-2 w-full px-4 py-4 mb-4 rounded-xl text-lg font-bold bg-amber-600 text-white shadow-lg active:scale-95 transition-all"
+              >
+                <User size={20} /> Moj Dashboard
+              </button>
+            )}
+
           <button
             onClick={() => {
               if (

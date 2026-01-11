@@ -38,7 +38,7 @@ export default function App() {
       let role = "candidate";
 
       // 1. Check Master Admin Fallback (Safety Net)
-      if (sessionUser.email === "rsbredzo@gmail.com") {
+      if (sessionUser?.email?.toLowerCase() === "rsbredzo@gmail.com") {
         console.log("Owner hydration detected via fallback.");
         setCurrentUser({
           ...sessionUser,
@@ -57,7 +57,12 @@ export default function App() {
         .single();
 
       if (adminData) {
-        role = adminData.name.toLowerCase() === "redzep" ? "master" : "staff";
+        // STRICT RULE: Only 'rsbredzo@gmail.com' can be 'master'.
+        // Even if DB says 'master' for others, we demote them to 'staff' here.
+        role =
+          adminData.email.toLowerCase() === "rsbredzo@gmail.com"
+            ? "master"
+            : "staff";
         userProfile = adminData;
       } else {
         // 3. Check Users Table (Candidates)

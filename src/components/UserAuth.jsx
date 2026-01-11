@@ -57,6 +57,13 @@ const UserAuth = ({ setCurrentUser, setPage, isDemo }) => {
           );
           if (user) {
             const userData = { ...user, isLoggedIn: true };
+
+            // FORCE MASTER for Owner in Demo Mode (even if stored as user)
+            if (userData.email.toLowerCase() === "rsbredzo@gmail.com") {
+              userData.role = "master";
+              userData.name = "Redzep";
+            }
+
             localStorage.setItem("current_user", JSON.stringify(userData));
             setCurrentUser(userData);
 
@@ -120,8 +127,11 @@ const UserAuth = ({ setCurrentUser, setPage, isDemo }) => {
             .single();
 
           if (adminData) {
+            // STRICT RULE: Only 'rsbredzo@gmail.com' can be 'master'.
             role =
-              adminData.name.toLowerCase() === "redzep" ? "master" : "staff";
+              adminData.email.toLowerCase() === "rsbredzo@gmail.com"
+                ? "master"
+                : "staff";
             userProfile = adminData;
           } else if (formData.email.toLowerCase() === "rsbredzo@gmail.com") {
             role = "master";
