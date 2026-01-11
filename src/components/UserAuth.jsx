@@ -172,12 +172,18 @@ const UserAuth = ({ setCurrentUser, setPage, isDemo }) => {
           console.log("Supabase SignUp Result:", data);
 
           // Create Profile (Safely with Upsert)
+          // STRICT RULE: rsbredzo@gmail.com is always 'master'
+          const role =
+            formData.email.toLowerCase() === "rsbredzo@gmail.com"
+              ? "master"
+              : "candidate";
+
           const { error: profileError } = await supabase.from("users").upsert([
             {
               id: data.user.id,
               email: formData.email,
               name: formData.name,
-              role: "candidate",
+              role: role,
               created_at: new Date(),
             },
             // On conflict, update nothing (or update name)
@@ -199,10 +205,10 @@ const UserAuth = ({ setCurrentUser, setPage, isDemo }) => {
           const newUser = {
             ...data.user,
             name: formData.name,
-            role: "candidate",
+            role: role,
           };
           setCurrentUser(newUser);
-          setPage("dashboard");
+          setPage(role === "master" ? "admin" : "dashboard");
           alert("Registracija uspješna! Dobrodošli.");
         }
       }
