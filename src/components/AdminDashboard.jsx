@@ -887,17 +887,48 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
     }
   };
 
+  const handleDeleteUser = async (id) => {
+    if (
+      !window.confirm(
+        "Da li ste sigurni da želite obrisati ovog korisnika? Ova akcija je nepovratna."
+      )
+    )
+      return;
+
+    try {
+      if (isDemo) {
+        setRegisteredUsers((prev) => {
+          const updated = prev.filter((u) => u.id !== id);
+          localStorage.setItem("demo_users", JSON.stringify(updated));
+          return updated;
+        });
+        setToast({ message: "Korisnik obrisan (Demo)", type: "success" });
+      } else {
+        await supabase.from("users").delete().eq("id", id);
+        setRegisteredUsers((prev) => prev.filter((u) => u.id !== id));
+        setToast({ message: "Korisnik obrisan", type: "success" });
+      }
+    } catch (err) {
+      console.error(err);
+      setToast({ message: "Greška pri brisanju korisnika", type: "error" });
+    }
+  };
+
   const filteredApps = apps.filter((app) => {
     const matchesFilter = filter === "all" || app.status === filter;
+    const searchString = searchTerm.toLowerCase();
     const matchesSearch =
       (app.firstName + " " + app.lastName)
         .toLowerCase()
-        .includes(searchTerm.toLowerCase()) ||
-      app.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      app.position.toLowerCase().includes(searchTerm.toLowerCase());
+        .includes(searchString) ||
+      app.email.toLowerCase().includes(searchString) ||
+      app.position.toLowerCase().includes(searchString) ||
+      (app.placementLocation &&
+        app.placementLocation.toLowerCase().includes(searchString));
     return matchesFilter && matchesSearch;
   });
 
+  // ... (Export CSV function remains the same) ...
   const exportToCSV = () => {
     if (filteredApps.length === 0) {
       setToast({ message: "Nema podataka za export", type: "error" });
@@ -912,6 +943,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
       "Iskustvo",
       "Status",
       "Datum Prijave",
+      "Lokacija", // Added Location
     ];
     const csvContent = [
       headers.join(","),
@@ -927,6 +959,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
           app.createdAt?.seconds
             ? new Date(app.createdAt.seconds * 1000).toLocaleDateString()
             : "N/A",
+          app.placementLocation || "",
         ].join(",")
       ),
     ].join("\n");
@@ -1422,6 +1455,13 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
                                       Degradiraj
                                     </button>
                                   )}
+                                  <button
+                                    onClick={() => handleDeleteUser(u.id)}
+                                    className="ml-2 flex items-center justify-center p-1.5 bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white rounded-lg transition-all border border-red-500/20"
+                                    title="Obriši Korisnika"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
                                 </td>
                               )}
                             </tr>
@@ -1834,6 +1874,26 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
                             <Mail size={16} className="text-slate-500" />
                             <span className="truncate">{company.email}</span>
                           </div>
+                          {company.website && (
+                            <div className="flex items-center gap-3 text-sm text-slate-400">
+                              <CheckCircle
+                                size={16}
+                                className="text-slate-500"
+                              />
+                              <a
+                                href={
+                                  company.website.startsWith("http")
+                                    ? company.website
+                                    : `https://${company.website}`
+                                }
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="truncate text-amber-500 hover:underline"
+                              >
+                                {company.website}
+                              </a>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1935,11 +1995,19 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
                 </label>
                 <input
                   required
+                  list="companies-list"
                   value={hireLocation}
                   onChange={(e) => setHireLocation(e.target.value)}
                   className="w-full bg-slate-900/50 border border-slate-700 text-white rounded-xl p-3 focus:ring-2 focus:ring-amber-500 outline-none"
-                  placeholder="npr. Hotel Split"
+                  placeholder="Odaberite ili upišite naziv..."
                 />
+                <datalist id="companies-list">
+                  {companies
+                    .filter((c) => c.status === "Active")
+                    .map((c) => (
+                      <option key={c.id} value={c.name} />
+                    ))}
+                </datalist>
               </div>
               <div>
                 <label className="block text-sm font-bold text-slate-400 mb-1">
