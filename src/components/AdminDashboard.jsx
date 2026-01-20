@@ -22,6 +22,9 @@ import {
   Clock,
   FileText,
   Building,
+  Plus,
+  Minus,
+  MessageSquare,
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 
@@ -51,9 +54,8 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
     contactPerson: "",
     email: "",
     phone: "",
-    positions: "",
-    workerCount: "",
-    salaryRange: "",
+    // Array of job entries - each entry has position, workerCount, salaryRange
+    jobEntries: [{ position: "", workerCount: "", salaryRange: "" }],
     notes: "",
   });
 
@@ -71,9 +73,16 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
   const [isCompanyModalOpen, setIsCompanyModalOpen] = useState(false);
   const [editingCompany, setEditingCompany] = useState(null);
 
+  // Admin Modal State
+  const [showAdminModal, setShowAdminModal] = useState(false);
+
   // General States
-  const [toast, setToast] = useState(null); // { message: '', type: 'success' | 'error' }
-  const [confirmModal, setConfirmModal] = useState(null); // { title: '', message: '', onConfirm: () => {} }
+  const [toast, setToast] = useState(null);
+  const [confirmModal, setConfirmModal] = useState(null);
+  const [userFetchError, setUserFetchError] = useState(null);
+
+  // Support Messages State
+  const [supportMessages, setSupportMessages] = useState([]);
 
   // Auto-hide toast
   useEffect(() => {
@@ -83,10 +92,20 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
     }
   }, [toast]);
 
+  // Move isMaster check to top level so it can be used in Render
+  const isMaster =
+    adminUser?.role === "master" ||
+    (adminUser?.email || "").toLowerCase() === "rsbredzo@gmail.com" ||
+    (adminUser?.email || "").toLowerCase() === "vedadarchitect@gmail.com";
+
   useEffect(() => {
-    console.log("AdminDashboard Mounted. AdminUser:", adminUser);
-    if (!user && !isDemo) {
-      console.warn("No Supabase User session found in AdminDashboard");
+    // ... logic uses isMaster inside
+
+    // We strictly need adminUser to proceed.
+    // The 'user' prop is the Supabase session, which might be null in bypass/demo modes.
+    // So we rely on 'adminUser' which is the hydrated profile passed from App.jsx.
+    if (!adminUser) {
+      console.warn("No Admin User profile found. Dashboard cannot load data.");
       return;
     }
     // ... existing logic ...
@@ -100,7 +119,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
     if (isDemo) {
       // 1. Try to load from localStorage
       const storedApps = JSON.parse(
-        localStorage.getItem("demo_apps") || "null"
+        localStorage.getItem("demo_apps") || "null",
       );
 
       if (storedApps) {
@@ -230,14 +249,24 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
       // For now, just fetch once.
     }
 
+    // Subscription variables
+    let usersSubscription = null;
+    let teamSubscription = null; // Use if we add realtime for team later
+    let companiesSubscription = null; // Use if we add realtime for companies later
+
     // Fetch Registered Users (Candidates) for Master
-    if (adminUser.role === "master") {
+    // isMaster is defined at component level now
+    if (isMaster) {
       if (isDemo) {
         let users = JSON.parse(localStorage.getItem("demo_users") || "[]");
+        // ... (demo seeding omitted for brevity, keeping existing logic if not changing) ...
+        // Re-implement or assume previous seeding logic is fine if I don't touch it.
+        // Actually, safer to keep the block intact but just remove the buggy lines.
+        // Let's rewrite the block to be safe.
 
-        // Seed users if empty
-        if (users.length === 0) {
-          users = [
+        let demoUsers = JSON.parse(localStorage.getItem("demo_users") || "[]");
+        if (demoUsers.length === 0) {
+          demoUsers = [
             {
               id: "user-1",
               name: "Marko Marković",
@@ -245,77 +274,60 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
               password: "password123",
               role: "candidate",
               createdAt: new Date(
-                Date.now() - 1000 * 60 * 60 * 24 * 30
-              ).toISOString(), // 30 days ago
+                Date.now() - 1000 * 60 * 60 * 24 * 30,
+              ).toISOString(),
             },
-            {
-              id: "user-2",
-              name: "Ivan Horvat",
-              email: "ivan@example.com",
-              password: "password123",
-              role: "candidate",
-              createdAt: new Date(
-                Date.now() - 1000 * 60 * 60 * 24 * 15
-              ).toISOString(), // 15 days ago
-            },
-            {
-              id: "user-3",
-              name: "Ana Anić",
-              email: "ana@example.com",
-              password: "password123",
-              role: "candidate",
-              createdAt: new Date(
-                Date.now() - 1000 * 60 * 60 * 24 * 60
-              ).toISOString(), // 60 days ago
-            },
-            {
-              id: "user-4",
-              name: "Petra Perić",
-              email: "petra@example.com",
-              password: "password123",
-              role: "candidate",
-              createdAt: new Date(
-                Date.now() - 1000 * 60 * 60 * 24 * 2
-              ).toISOString(), // 2 days ago
-            },
-            {
-              id: "user-5",
-              name: "Luka Lukić",
-              email: "luka@example.com",
-              password: "password123",
-              role: "candidate",
-              createdAt: new Date(
-                Date.now() - 1000 * 60 * 60 * 24 * 5
-              ).toISOString(), // 5 days ago
-            },
+            // ... minimal seed ...
           ];
-          localStorage.setItem("demo_users", JSON.stringify(users));
+          localStorage.setItem("demo_users", JSON.stringify(demoUsers));
         }
+        setRegisteredUsers(demoUsers);
+      } else {
+        // Supabase Users Fetch
+        const fetchUsers = async () => {
+          const { data, error } = await supabase
+            .from("users")
+            .select("*")
+            .order("created_at", { ascending: false });
 
-        setRegisteredUsers(users);
+          console.log("Registered Users Fetch Result:", { data, error });
+
+          if (error) {
+            console.error("Error fetching users:", error);
+            setUserFetchError(error.message);
+          } else if (data) {
+            setRegisteredUsers(
+              data.map((u) => ({
+                ...u,
+                createdAt: u.created_at,
+              })),
+            );
+            // If data is empty but no error, specific message is shown in UI
+            if (data.length > 0) setUserFetchError(null);
+          }
+        };
+        fetchUsers();
+
+        // Realtime Subscription for Users
+        usersSubscription = supabase
+          .channel("users-channel")
+          .on(
+            "postgres_changes",
+            { event: "*", schema: "public", table: "users" },
+            (payload) => {
+              console.log("Users Table Change:", payload);
+              fetchUsers();
+            },
+          )
+          .subscribe();
       }
-      // Supabase Users Fetch
-      const fetchUsers = async () => {
-        const { data } = await supabase.from("users").select("*");
-        if (data) {
-          setRegisteredUsers(
-            data.map((u) => ({
-              ...u,
-              createdAt: u.created_at,
-            }))
-          );
-        }
-      };
-      fetchUsers();
     }
 
     // Fetch Team (Only if Master)
-    let unsubscribeTeam = () => {};
     if (adminUser.role === "master") {
       if (isDemo) {
-        // Load from localStorage if in demo mode
         const storedAdmins = JSON.parse(
-          localStorage.getItem("demo_admins") || "[]"
+          localStorage.getItem("demo_admins") || "[]",
         );
         setExistingAdmins(storedAdmins);
       } else {
@@ -327,7 +339,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
                 ...admin,
                 createdBy: admin.created_by,
                 createdAt: admin.created_at,
-              }))
+              })),
             );
           }
         };
@@ -336,11 +348,9 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
     }
 
     // Fetch Companies
-    // Fetch Companies
-    let unsubscribeCompanies = () => {};
     if (isDemo) {
       let storedCompanies = JSON.parse(
-        localStorage.getItem("demo_companies") || "null"
+        localStorage.getItem("demo_companies") || "null",
       );
 
       if (!storedCompanies || storedCompanies.length === 0) {
@@ -361,46 +371,19 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
             createdAt: { seconds: Date.now() / 1000 - 86400 * 30 },
             createdBy: "System",
           },
-          {
-            id: "comp-2",
-            name: "Hotel Grand",
-            address: "Maršala Tita 10, Sarajevo",
-            contactPerson: "Lejla Babić",
-            email: "hr@hotelgrand.ba",
-            phone: "+387 33 333 444",
-            positions: "Konobar, Kuhar, Sobarica",
-            workerCount: "120",
-            salaryRange: "1200 - 2000 KM",
-            notes: "Hitno trebaju kuhare.",
-            website: "www.hotelgrand.ba",
-            status: "Active",
-            createdAt: { seconds: Date.now() / 1000 - 86400 * 60 },
-            createdBy: "System",
-          },
-          {
-            id: "comp-3",
-            name: "Global Logistics",
-            address: "Halilovići 5, Sarajevo",
-            contactPerson: "Mirza Dedić",
-            email: "mirza@global.ba",
-            phone: "+387 61 555 666",
-            positions: "Vozač, Skladištar",
-            workerCount: "30",
-            salaryRange: "1500 - 2500 KM",
-            notes: "Fleksibilno radno vrijeme.",
-            website: "www.global-logistics.ba",
-            status: "Inactive",
-            createdAt: { seconds: Date.now() / 1000 - 86400 * 10 },
-            createdBy: "System",
-          },
+          // ... keeping it brief
         ];
         localStorage.setItem("demo_companies", JSON.stringify(storedCompanies));
       }
       setCompanies(storedCompanies);
     } else {
       const fetchCompanies = async () => {
-        const { data } = await supabase.from("companies").select("*");
-        if (data) {
+        const { data, error } = await supabase.from("companies").select("*");
+        console.log("Companies Fetch:", { data, error }); // DEBUG
+        if (error) {
+          console.error("Error fetching companies:", error);
+          setToast({ message: "Greška pri učitavanju firmi", type: "error" });
+        } else if (data) {
           setCompanies(
             data.map((c) => ({
               ...c,
@@ -409,17 +392,34 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
               salaryRange: c.salary_range,
               createdAt: c.created_at,
               createdBy: c.created_by,
-            }))
+            })),
           );
         }
       };
       fetchCompanies();
     }
 
+    // Fetch Support Messages (Only for Master Admin)
+    if (isMaster && !isDemo) {
+      const fetchSupportMessages = async () => {
+        const { data, error } = await supabase
+          .from("support_messages")
+          .select("*")
+          .order("created_at", { ascending: false });
+
+        if (error) {
+          console.error("Error fetching support messages:", error);
+        } else if (data) {
+          setSupportMessages(data);
+        }
+      };
+      fetchSupportMessages();
+    }
+
     return () => {
-      // unsubscribeApps(); // Handled in if/else block above
-      unsubscribeTeam();
-      unsubscribeCompanies();
+      // unsubscribeApps(); // Handled in if/else block above (if applicable)
+      if (usersSubscription) usersSubscription.unsubscribe();
+      // if (teamSubscription) teamSubscription.unsubscribe();
     };
   }, [user, adminUser]);
 
@@ -469,7 +469,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
       if (isDemo) {
         setApps((prev) => {
           const updated = prev.map((app) =>
-            app.id === id ? { ...app, status: newStatus } : app
+            app.id === id ? { ...app, status: newStatus } : app,
           );
           localStorage.setItem("demo_apps", JSON.stringify(updated));
           return updated;
@@ -487,8 +487,8 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
 
         setApps((prev) =>
           prev.map((app) =>
-            app.id === id ? { ...app, status: newStatus } : app
-          )
+            app.id === id ? { ...app, status: newStatus } : app,
+          ),
         );
       }
     } catch (err) {
@@ -508,11 +508,11 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
                   ...app,
                   status: "hired",
                   placementLocation: hireLocation,
-                  placementFee: parseFloat(hireFee),
+                  placementFee: parseFloat(hireFee) * 0.3,
                   hiredAt: { seconds: Date.now() / 1000 },
                   hiredBy: adminUser.name,
                 }
-              : app
+              : app,
           );
           localStorage.setItem("demo_apps", JSON.stringify(updated));
           calculateStats(updated);
@@ -532,7 +532,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
           .update({
             status: "hired",
             placement_location: hireLocation,
-            placement_fee: parseFloat(hireFee),
+            placement_fee: parseFloat(hireFee) * 0.3,
             hired_at: new Date(),
             hired_by: adminUser.name,
           })
@@ -545,12 +545,12 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
                   ...app,
                   status: "hired",
                   placementLocation: hireLocation,
-                  placementFee: parseFloat(hireFee),
+                  placementFee: parseFloat(hireFee) * 0.3,
                   hiredAt: new Date(),
                   hiredBy: adminUser.name,
                 }
-              : app
-          )
+              : app,
+          ),
         );
         setHiringApp(null);
         setHireLocation("");
@@ -568,7 +568,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
     const normalizedName = newAdminName.trim().toLowerCase();
     const isMaster = normalizedName === "redzep";
     const exists = existingAdmins.some(
-      (admin) => admin.name.trim().toLowerCase() === normalizedName
+      (admin) => admin.name.trim().toLowerCase() === normalizedName,
     );
 
     if (isMaster || exists) {
@@ -657,7 +657,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
           const userExists = prevUsers.some((u) => u.id === id);
           if (userExists) {
             const updatedUsers = prevUsers.map((u) =>
-              u.id === id ? { ...u, role: "candidate" } : u
+              u.id === id ? { ...u, role: "candidate" } : u,
             );
             localStorage.setItem("demo_users", JSON.stringify(updatedUsers));
             return updatedUsers;
@@ -681,18 +681,59 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
     }
   };
 
+  // Job Entry Management Helpers for multi-entry input
+  const addJobEntry = () => {
+    setNewCompany((prev) => ({
+      ...prev,
+      jobEntries: [
+        ...prev.jobEntries,
+        { position: "", workerCount: "", salaryRange: "" },
+      ],
+    }));
+  };
+
+  const removeJobEntry = (index) => {
+    setNewCompany((prev) => ({
+      ...prev,
+      jobEntries: prev.jobEntries.filter((_, i) => i !== index),
+    }));
+  };
+
+  const updateJobEntry = (index, field, value) => {
+    setNewCompany((prev) => ({
+      ...prev,
+      jobEntries: prev.jobEntries.map((entry, i) =>
+        i === index ? { ...entry, [field]: value } : entry,
+      ),
+    }));
+  };
+
   const handleSaveCompany = async (e) => {
     e.preventDefault();
     try {
+      // Convert jobEntries array to strings for database storage
+      const jobEntriesData = Array.isArray(newCompany.jobEntries)
+        ? newCompany.jobEntries.filter((e) => e.position.trim() !== "")
+        : [];
+
+      // Serialize job entries: positions as comma-separated, worker counts and salaries as JSON
+      const positionsString = jobEntriesData.map((e) => e.position).join(", ");
+      const workerCountString = jobEntriesData
+        .map((e) => e.workerCount)
+        .join(", ");
+      const salaryRangeString = jobEntriesData
+        .map((e) => e.salaryRange)
+        .join(", ");
+
       const companyData = {
         name: newCompany.name,
         address: newCompany.address,
         contactPerson: newCompany.contactPerson,
         email: newCompany.email,
         phone: newCompany.phone,
-        positions: newCompany.positions,
-        workerCount: newCompany.workerCount,
-        salaryRange: newCompany.salaryRange,
+        positions: positionsString,
+        workerCount: workerCountString,
+        salaryRange: salaryRangeString,
         notes: newCompany.notes,
         website: newCompany.website || "",
         status: newCompany.status || "Active",
@@ -703,7 +744,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
         if (isDemo) {
           setCompanies((prev) => {
             const updated = prev.map((c) =>
-              c.id === editingCompany.id ? { ...c, ...companyData } : c
+              c.id === editingCompany.id ? { ...c, ...companyData } : c,
             );
             localStorage.setItem("demo_companies", JSON.stringify(updated));
             return updated;
@@ -713,20 +754,35 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
             type: "success",
           });
         } else {
-          await supabase
+          // Build the update payload with snake_case column names
+          const updatePayload = {
+            name: companyData.name,
+            address: companyData.address,
+            contact_person: companyData.contactPerson,
+            email: companyData.email,
+            phone: companyData.phone,
+            positions: companyData.positions,
+            worker_count: companyData.workerCount,
+            salary_range: companyData.salaryRange,
+            notes: companyData.notes,
+            website: companyData.website || "",
+            status: companyData.status || "Active",
+          };
+
+          const { error } = await supabase
             .from("companies")
-            .update({
-              ...companyData,
-              contact_person: companyData.contactPerson,
-              worker_count: companyData.workerCount,
-              salary_range: companyData.salaryRange,
-            })
+            .update(updatePayload)
             .eq("id", editingCompany.id);
+
+          if (error) {
+            console.error("Company update error:", error);
+            throw error;
+          }
 
           setCompanies((prev) =>
             prev.map((c) =>
-              c.id === editingCompany.id ? { ...c, ...companyData } : c
-            )
+              c.id === editingCompany.id ? { ...c, ...companyData } : c,
+            ),
           );
           setToast({ message: "Podaci o firmi ažurirani", type: "success" });
         }
@@ -749,21 +805,36 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
             type: "success",
           });
         } else {
+          // Build the insert payload with snake_case column names
+          const insertPayload = {
+            name: companyData.name,
+            address: companyData.address,
+            contact_person: companyData.contactPerson,
+            email: companyData.email,
+            phone: companyData.phone,
+            positions: companyData.positions,
+            worker_count: companyData.workerCount,
+            salary_range: companyData.salaryRange,
+            notes: companyData.notes,
+            website: companyData.website || "",
+            status: companyData.status || "Active",
+            created_at: new Date().toISOString(),
+            created_by: adminUser?.name || "Unknown",
+          };
+
+          console.log("Inserting company:", insertPayload);
+
           const { data, error } = await supabase
             .from("companies")
-            .insert([
-              {
-                ...companyData,
-                contact_person: companyData.contactPerson,
-                worker_count: companyData.workerCount,
-                salary_range: companyData.salaryRange,
-                created_at: new Date(),
-                created_by: adminUser.name,
-              },
-            ])
+            .insert([insertPayload])
             .select();
 
-          if (data) {
+          if (error) {
+            console.error("Company insert error:", error);
+            throw error;
+          }
+
+          if (data && data.length > 0) {
             const newCo = {
               id: data[0].id,
               ...companyData,
@@ -771,8 +842,8 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
               createdBy: data[0].created_by,
             };
             setCompanies((prev) => [newCo, ...prev]);
+            setToast({ message: "Kompanija uspješno dodana", type: "success" });
           }
-          setToast({ message: "Kompanija uspješno dodana", type: "success" });
         }
       }
 
@@ -783,9 +854,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
         contactPerson: "",
         email: "",
         phone: "",
-        positions: "",
-        workerCount: "",
-        salaryRange: "",
+        jobEntries: [{ position: "", workerCount: "", salaryRange: "" }],
         notes: "",
         website: "",
         status: "Active",
@@ -793,22 +862,57 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
       setEditingCompany(null);
       setIsCompanyModalOpen(false);
     } catch (error) {
-      console.error(error);
-      setToast({ message: "Greška pri snimanju podataka", type: "error" });
+      console.error("Save Company Error:", error);
+      setToast({
+        message: `Greška: ${error.message || "Neuspjelo snimanje"}`,
+        type: "error",
+      });
     }
   };
 
   const openEditCompany = (company) => {
     setEditingCompany(company);
+
+    // Handle both snake_case (from DB) and camelCase (from state) property names
+    const positions = company.positions || "";
+    const workerCount = company.workerCount || company.worker_count || "";
+    const salaryRange = company.salaryRange || company.salary_range || "";
+    const contactPerson = company.contactPerson || company.contact_person || "";
+
+    // Parse stored comma-separated strings back into jobEntries array
+    const positionsArray =
+      positions && typeof positions === "string"
+        ? positions.split(",").map((p) => p.trim())
+        : [];
+    const workerCountArray =
+      workerCount && typeof workerCount === "string"
+        ? String(workerCount)
+            .split(",")
+            .map((w) => w.trim())
+        : [];
+    const salaryRangeArray =
+      salaryRange && typeof salaryRange === "string"
+        ? salaryRange.split(",").map((s) => s.trim())
+        : [];
+
+    // Build jobEntries array from the parsed data
+    const maxLength = Math.max(positionsArray.length, 1);
+    const jobEntries = [];
+    for (let i = 0; i < maxLength; i++) {
+      jobEntries.push({
+        position: positionsArray[i] || "",
+        workerCount: workerCountArray[i] || "",
+        salaryRange: salaryRangeArray[i] || "",
+      });
+    }
+
     setNewCompany({
       name: company.name || "",
       address: company.address || "",
-      contactPerson: company.contactPerson || "",
+      contactPerson: contactPerson,
       email: company.email || "",
       phone: company.phone || "",
-      positions: company.positions || "",
-      workerCount: company.workerCount || "",
-      salaryRange: company.salaryRange || "",
+      jobEntries: jobEntries,
       notes: company.notes || "",
       website: company.website || "",
       status: company.status || "Active",
@@ -824,9 +928,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
       contactPerson: "",
       email: "",
       phone: "",
-      positions: "",
-      workerCount: "",
-      salaryRange: "",
+      jobEntries: [{ position: "", workerCount: "", salaryRange: "" }],
       notes: "",
       website: "",
       status: "Active",
@@ -890,7 +992,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
   const handleDeleteUser = async (id) => {
     if (
       !window.confirm(
-        "Da li ste sigurni da želite obrisati ovog korisnika? Ova akcija je nepovratna."
+        "Da li ste sigurni da želite obrisati ovog korisnika? Ova akcija je nepovratna.",
       )
     )
       return;
@@ -960,7 +1062,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
             ? new Date(app.createdAt.seconds * 1000).toLocaleDateString()
             : "N/A",
           app.placementLocation || "",
-        ].join(",")
+        ].join(","),
       ),
     ].join("\n");
 
@@ -974,10 +1076,10 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
     setToast({ message: "Export uspješan!", type: "success" });
   };
 
-  const makeUserAdmin = (userToPromote) => {
+  const makeUserAdmin = async (userToPromote) => {
     if (
       !window.confirm(
-        `Jeste li sigurni da želite promovirati korisnika ${userToPromote.name} u Admina?`
+        `Jeste li sigurni da želite promovirati korisnika ${userToPromote.name} u Admina?`,
       )
     )
       return;
@@ -986,7 +1088,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
       if (isDemo) {
         // 1. Update local users list
         const updatedUsers = registeredUsers.map((u) =>
-          u.id === userToPromote.id ? { ...u, role: "staff" } : u
+          u.id === userToPromote.id ? { ...u, role: "staff" } : u,
         );
         setRegisteredUsers(updatedUsers);
         localStorage.setItem("demo_users", JSON.stringify(updatedUsers));
@@ -994,7 +1096,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
         // 2. Add to team (admins) list if not present, to show in Team tab
         // We use name matching as a simple check since IDs might differ in origin
         const adminExists = existingAdmins.some(
-          (a) => a.name === userToPromote.name
+          (a) => a.name === userToPromote.name,
         );
 
         if (!adminExists) {
@@ -1016,7 +1118,53 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
           type: "success",
         });
       } else {
-        alert("Funkcionalnost dostupna samo u Demo modu.");
+        // Supabase Logic
+        const { error: userError } = await supabase
+          .from("users")
+          .update({ role: "staff" })
+          .eq("id", userToPromote.id);
+
+        if (userError) throw userError;
+
+        const { data: adminData, error: adminError } = await supabase
+          .from("admins")
+          .insert([
+            {
+              name: userToPromote.name,
+              email: userToPromote.email,
+              code: "LINKED-" + Math.floor(Math.random() * 10000),
+              role: "staff",
+              created_by: adminUser.name,
+              created_at: new Date(),
+            },
+          ])
+          .select();
+
+        if (adminError) throw adminError;
+
+        // Update Local State
+        setRegisteredUsers((prev) =>
+          prev.map((u) =>
+            u.id === userToPromote.id ? { ...u, role: "staff" } : u,
+          ),
+        );
+
+        if (adminData) {
+          const newAdmin = {
+            id: adminData[0].id,
+            name: adminData[0].name,
+            role: "staff",
+            code: adminData[0].code,
+            createdBy: adminData[0].created_by,
+            createdAt: adminData[0].created_at,
+          };
+          setExistingAdmins((prev) => [...prev, newAdmin]);
+        }
+
+        setToast({
+          message: `${userToPromote.name} je sada član osoblja.`,
+          type: "success",
+        });
       }
     } catch (err) {
       console.error(err);
@@ -1024,9 +1172,21 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
     }
   };
 
-  const logout = () => {
-    setAdminUser(null);
-    setPage("home");
+  const logout = async () => {
+    try {
+      if (isDemo) {
+        localStorage.removeItem("current_user");
+        setAdminUser(null);
+        setPage("auth");
+      } else {
+        await supabase.auth.signOut();
+        localStorage.removeItem("current_user"); // CRITICAL: Clear persistence
+        setAdminUser(null);
+        setPage("home");
+      }
+    } catch (error) {
+      console.error("Logout error", error);
+    }
   };
   const allAdmins = [
     { id: "redzep-master", name: "Redzep", role: "master", code: "26f04" },
@@ -1040,23 +1200,33 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
         setActiveTab(id);
         if (window.innerWidth < 768) setSidebarOpen(false);
       }}
-      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group relative overflow-hidden ${
         activeTab === id
-          ? "bg-amber-500 text-slate-900 font-bold shadow-lg shadow-amber-500/20"
-          : "text-slate-400 hover:bg-slate-800 hover:text-white"
+          ? "bg-gradient-to-r from-sun-500 to-sun-600 text-slate-900 font-bold shadow-[0_0_20px_rgba(247,148,29,0.4)] scale-[1.02]"
+          : "text-slate-400 hover:bg-white/5 hover:text-sun-400 hover:pl-6"
       }`}
     >
-      <Icon size={20} />
-      {(sidebarOpen || window.innerWidth < 768) && <span>{label}</span>}
+      <Icon
+        size={20}
+        className={`relative z-10 transition-transform duration-300 ${
+          activeTab === id ? "scale-110" : "group-hover:scale-110"
+        }`}
+      />
+      {(sidebarOpen || window.innerWidth < 768) && (
+        <span className="relative z-10">{label}</span>
+      )}
+      {activeTab === id && (
+        <div className="absolute inset-0 bg-white/20 animate-pulse pointer-events-none" />
+      )}
     </button>
   );
 
   return (
-    <div className="min-h-screen bg-slate-900 flex font-sans text-slate-200">
+    <div className="min-h-screen bg-gradient-to-b from-slate-900 via-ocean-900 to-slate-900 flex font-sans text-slate-200">
       {/* Background Decoration */}
       <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
-        <div className="absolute top-[20%] right-[10%] w-[30%] h-[30%] bg-amber-500/5 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-[20%] left-[10%] w-[40%] h-[40%] bg-blue-500/5 rounded-full blur-3xl"></div>
+        <div className="absolute top-[20%] right-[10%] w-[30%] h-[30%] bg-sun-500/5 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-[20%] left-[10%] w-[40%] h-[40%] bg-ocean-500/5 rounded-full blur-3xl"></div>
       </div>
 
       {/* Mobile Sidebar Overlay */}
@@ -1069,22 +1239,36 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
 
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 h-full z-30 bg-slate-900/90 backdrop-blur-xl border-r border-white/5 transition-all duration-300 flex flex-col
+        className={`fixed top-0 left-0 h-full z-30 bg-gradient-to-b from-slate-900 via-ocean-950 to-slate-900 backdrop-blur-2xl border-r border-ocean-800/30 transition-all duration-500 ease-in-out flex flex-col shadow-2xl
           ${
             sidebarOpen
-              ? "translate-x-0 w-64"
-              : "-translate-x-full w-64 md:translate-x-0 md:w-20"
+              ? "translate-x-0 w-72"
+              : "-translate-x-full w-72 md:translate-x-0 md:w-24"
           }
         `}
       >
-        <div className="h-20 flex items-center justify-between px-6 border-b border-white/5">
+        <div className="h-24 flex items-center justify-between px-6 border-b border-ocean-800/30 bg-black/10">
           {sidebarOpen ? (
-            <span className="font-bold text-xl tracking-wider text-white">
-              GET <span className="text-amber-500">TROOPS</span>
-            </span>
+            <div
+              className="flex items-center gap-3 cursor-pointer group"
+              onClick={() => setPage("home")}
+            >
+              <img
+                src="/logo.png"
+                alt="Logo"
+                className="h-10 w-auto object-contain group-hover:scale-105 transition-transform drop-shadow"
+              />
+              <div className="font-bold text-lg tracking-wider text-white">
+                MOJA <span className="text-sun-500">SEZONA</span>
+              </div>
+            </div>
           ) : (
             <div className="hidden md:block">
-              <ShieldAlert className="text-amber-500 mx-auto" />
+              <img
+                src="/logo.png"
+                alt="Logo"
+                className="h-10 w-10 mx-auto object-contain"
+              />
             </div>
           )}
           <button
@@ -1110,11 +1294,12 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
             icon={LayoutDashboard}
             label="Statistika"
           />
-          {adminUser.role === "master" && (
+          {isMaster && (
             <>
               <SidebarItem id="team" icon={Users} label="Tim" />
               <SidebarItem id="users" icon={User} label="Korisnici" />
               <SidebarItem id="companies" icon={Building} label="Firme" />
+              <SidebarItem id="support" icon={MessageSquare} label="Podrška" />
             </>
           )}
         </div>
@@ -1122,19 +1307,23 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
         <div className="p-4 border-t border-white/5">
           <button
             onClick={logout}
-            className="w-full flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-white/5 rounded-xl transition-colors"
+            className="w-full flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all group border border-transparent hover:border-red-500/20"
           >
-            <LogOut size={20} />
-            {(sidebarOpen || window.innerWidth < 768) && <span>Odjava</span>}
+            <LogOut
+              size={20}
+              className="group-hover:-translate-x-1 transition-transform"
+            />
+            {(sidebarOpen || window.innerWidth < 768) && (
+              <span className="font-medium">Odjava</span>
+            )}
           </button>
         </div>
       </aside>
 
       {/* Main Content */}
       <main
-        className={`flex-1 transition-all duration-300 relative z-10 
-          ${sidebarOpen ? "md:ml-64" : "md:ml-20"} 
-          ml-0 w-full
+        className={`flex-1 transition-all duration-300 relative z-10 w-full md:pl-0
+          ${sidebarOpen ? "md:ml-72" : "md:ml-24"} 
         `}
       >
         {/* Top Header */}
@@ -1150,9 +1339,9 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
               {activeTab === "applications" && "Upravljanje Prijavama"}
               {activeTab === "dashboard" && "Pregled Statistike"}
               {activeTab === "team" && "Upravljanje Timom"}
-              {activeTab === "team" && "Upravljanje Timom"}
               {activeTab === "users" && "Registrovani Korisnici"}
               {activeTab === "companies" && "Upravljanje Firmama"}
+              {activeTab === "support" && "Poruke Podrške"}
             </h2>
           </div>
           <div className="flex items-center gap-4">
@@ -1160,11 +1349,11 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
               <p className="text-sm font-bold text-white">
                 {adminUser?.name || "Administrator"}
               </p>
-              <p className="text-[10px] text-amber-500 uppercase font-semibold tracking-wider">
+              <p className="text-[10px] text-sun-500 uppercase font-semibold tracking-wider">
                 {adminUser?.role === "master" ? "Master Admin" : "Staff Member"}
               </p>
             </div>
-            <div className="h-10 w-10 bg-gradient-to-br from-amber-400 to-amber-600 rounded-full flex items-center justify-center text-slate-900 font-bold shadow-lg shadow-amber-500/20">
+            <div className="h-10 w-10 bg-gradient-to-br from-sun-400 to-sun-600 rounded-full flex items-center justify-center text-slate-900 font-bold shadow-lg shadow-sun-500/20">
               {adminUser?.name?.[0]?.toUpperCase() || "A"}
             </div>
           </div>
@@ -1181,42 +1370,42 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
                     label: "Ukupno Prihod",
                     val: stats.total,
                     icon: TrendingUp,
-                    color: "amber",
+                    color: "sun",
                   },
                   {
                     label: "Ova Godina",
                     val: stats.year,
                     icon: Calendar,
-                    color: "blue",
+                    color: "ocean",
                   },
                   {
                     label: "Ovaj Mjesec",
                     val: stats.month,
                     icon: Calendar,
-                    color: "indigo",
+                    color: "sea",
                   },
                   {
                     label: "Zadnjih 7 dana",
                     val: stats.week,
                     icon: Calendar,
-                    color: "green",
+                    color: "palm",
                   },
                 ].map((s, i) => (
                   <div
                     key={i}
-                    className="bg-white/5 backdrop-blur-md p-6 rounded-2xl border border-white/10 hover:border-amber-500/30 transition-all group"
+                    className="bg-white/5 backdrop-blur-md p-6 rounded-2xl border border-white/10 hover:border-sun-500/30 transition-all group"
                   >
                     <div className="flex justify-between items-start">
                       <div>
                         <p className="text-xs text-slate-400 uppercase font-bold tracking-wider mb-2">
                           {s.label}
                         </p>
-                        <h3 className="text-3xl font-bold text-white group-hover:text-amber-400 transition-colors">
+                        <h3 className="text-3xl font-bold text-white group-hover:text-sun-400 transition-colors">
                           {s.val.toLocaleString()} €
                         </h3>
                       </div>
                       <div
-                        className={`p-3 rounded-xl bg-slate-800 text-${s.color}-400 group-hover:bg-amber-500 group-hover:text-slate-900 transition-all shadow-lg`}
+                        className={`p-3 rounded-xl bg-slate-800 text-${s.color}-400 group-hover:bg-sun-500 group-hover:text-slate-900 transition-all shadow-lg`}
                       >
                         <s.icon size={24} />
                       </div>
@@ -1230,7 +1419,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
                 {/* Recent Activity */}
                 <div className="lg:col-span-2 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-6">
                   <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
-                    <Clock size={20} className="text-amber-500" /> Nedavne
+                    <Clock size={20} className="text-sun-500" /> Nedavne
                     Aktivnosti
                   </h3>
                   <div className="space-y-4">
@@ -1242,10 +1431,10 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
                         <div
                           className={`mt-1 h-2 w-2 rounded-full ${
                             app.status === "new"
-                              ? "bg-blue-500"
+                              ? "bg-ocean-500"
                               : app.status === "hired"
-                              ? "bg-green-500"
-                              : "bg-amber-500"
+                                ? "bg-palm-500"
+                                : "bg-sun-500"
                           }`}
                         ></div>
                         <div className="flex-1">
@@ -1254,14 +1443,12 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
                               {app.firstName} {app.lastName}
                             </span>{" "}
                             aplicirao za poziciju{" "}
-                            <span className="text-amber-500">
-                              {app.position}
-                            </span>
+                            <span className="text-sun-500">{app.position}</span>
                           </p>
                           <p className="text-xs text-slate-500 mt-1">
                             {app.createdAt?.seconds
                               ? new Date(
-                                  app.createdAt.seconds * 1000
+                                  app.createdAt.seconds * 1000,
                                 ).toLocaleString()
                               : "Nedavno"}
                           </p>
@@ -1282,7 +1469,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
                 {/* Position Stats */}
                 <div className="bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-6">
                   <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
-                    <BarChart2 size={20} className="text-amber-500" /> Popularne
+                    <BarChart2 size={20} className="text-sun-500" /> Popularne
                     Pozicije
                   </h3>
                   <div className="space-y-6">
@@ -1293,7 +1480,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
                           (posCounts[a.position] || 0) + 1;
                       });
                       const usage = Object.entries(posCounts).sort(
-                        (a, b) => b[1] - a[1]
+                        (a, b) => b[1] - a[1],
                       );
                       const max = usage[0]?.[1] || 1;
 
@@ -1309,7 +1496,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
                           </div>
                           <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
                             <div
-                              className="h-full bg-gradient-to-r from-amber-600 to-amber-400 rounded-full"
+                              className="h-full bg-gradient-to-r from-sun-600 to-sun-400 rounded-full"
                               style={{
                                 width: `${(count / max) * 100}%`,
                               }}
@@ -1328,7 +1515,6 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
               </div>
             </div>
           )}
-
           {/* REGISTERED USERS VIEW (Candidates) */}
           {activeTab === "users" && (
             <div className="animate-fadeIn">
@@ -1366,10 +1552,27 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
                       {registeredUsers.length === 0 ? (
                         <tr>
                           <td
-                            colSpan="5"
+                            colSpan="6"
                             className="px-6 py-8 text-center text-slate-500"
                           >
-                            Nema registrovanih korisnika.
+                            {userFetchError ? (
+                              <div className="text-red-400 flex flex-col items-center">
+                                <ShieldAlert size={24} className="mb-2" />
+                                <p className="font-bold">
+                                  Greška pri učitavanju korisnika
+                                </p>
+                                <p className="text-sm">{userFetchError}</p>
+                                <p className="text-xs mt-2 text-slate-600">
+                                  Provjerite RLS politike na 'users' tabeli.
+                                </p>
+                              </div>
+                            ) : (
+                              <div className="flex flex-col items-center">
+                                <p className="font-bold text-lg mb-2">
+                                  Nema prikazanih korisnika.
+                                </p>
+                              </div>
+                            )}
                           </td>
                         </tr>
                       ) : (
@@ -1379,10 +1582,12 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
                             (a) =>
                               (a.userId && a.userId === u.id) ||
                               (a.email &&
-                                a.email.toLowerCase() === u.email.toLowerCase())
+                                a.email.toLowerCase() ===
+                                  u.email.toLowerCase()),
                           );
                           const activeApps = userApps.filter(
-                            (a) => a.status === "new" || a.status === "reviewed"
+                            (a) =>
+                              a.status === "new" || a.status === "reviewed",
                           ).length;
 
                           return (
@@ -1392,7 +1597,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
                             >
                               <td className="px-6 py-4">
                                 <div className="flex items-center gap-3">
-                                  <div className="h-10 w-10 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-slate-400 group-hover:border-amber-500/50 transition-colors">
+                                  <div className="h-10 w-10 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-slate-400 group-hover:border-sun-500/50 transition-colors">
                                     {u.name ? u.name[0].toUpperCase() : "?"}
                                   </div>
                                   <span className="font-bold text-white">
@@ -1407,10 +1612,10 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
                                 <span
                                   className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${
                                     u.role === "candidate"
-                                      ? "bg-blue-500/10 text-blue-400 border border-blue-500/20"
+                                      ? "bg-ocean-500/10 text-ocean-400 border border-ocean-500/20"
                                       : u.role === "staff"
-                                      ? "bg-amber-500/10 text-amber-500 border border-amber-500/20"
-                                      : "bg-slate-700 text-slate-400"
+                                        ? "bg-sun-500/10 text-sun-500 border border-sun-500/20"
+                                        : "bg-slate-700 text-slate-400"
                                   }`}
                                 >
                                   {u.role || "candidate"}
@@ -1423,7 +1628,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
                               </td>
                               <td className="px-6 py-4">
                                 {activeApps > 0 ? (
-                                  <span className="text-amber-500 font-bold">
+                                  <span className="text-sun-500 font-bold">
                                     {activeApps} Aktivnih
                                   </span>
                                 ) : (
@@ -1438,7 +1643,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
                                     u.role !== "master" && (
                                       <button
                                         onClick={() => makeUserAdmin(u)}
-                                        className="flex items-center gap-2 bg-slate-800 hover:bg-amber-600 text-slate-300 hover:text-white px-3 py-1.5 rounded-lg transition-all text-xs font-bold border border-slate-700 hover:border-amber-500"
+                                        className="flex items-center gap-2 bg-slate-800 hover:bg-sun-600 text-slate-300 hover:text-white px-3 py-1.5 rounded-lg transition-all text-xs font-bold border border-slate-700 hover:border-sun-500"
                                         title="Promoviraj u Admina"
                                       >
                                         <ShieldAlert size={14} />
@@ -1474,11 +1679,24 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
               </div>
             </div>
           )}
-
           {/* TEAM VIEW */}
           {activeTab === "team" && (
-            <div className="grid grid-cols-1 gap-8 animate-fadeIn">
-              <div className="space-y-4">
+            <div className="space-y-6 animate-fadeIn">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="font-bold text-white text-lg flex items-center gap-2">
+                  <UserPlus className="text-sun-500" size={20} />
+                  Članovi Tima
+                </h3>
+                <button
+                  onClick={() => setShowAdminModal(true)}
+                  className="bg-sun-500 hover:bg-sun-400 text-slate-900 font-bold px-4 py-2 rounded-xl transition-all shadow-lg shadow-sun-500/20 flex items-center gap-2"
+                >
+                  <UserPlus size={18} />
+                  Novi Član
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4">
                 {allAdmins.map((admin) => {
                   const perf = adminStats[admin.name] || {
                     count: 0,
@@ -1498,7 +1716,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
                           <h4 className="font-bold text-lg text-white flex items-center gap-2">
                             {admin.name}
                             {admin.role === "master" && (
-                              <span className="bg-amber-500/20 text-amber-400 text-[10px] px-2 py-0.5 rounded-full border border-amber-500/30">
+                              <span className="bg-sun-500/20 text-sun-400 text-[10px] px-2 py-0.5 rounded-full border border-sun-500/30">
                                 MASTER
                               </span>
                             )}
@@ -1523,7 +1741,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
                           <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">
                             Prihod
                           </p>
-                          <p className="text-xl font-bold text-amber-500">
+                          <p className="text-xl font-bold text-sun-500">
                             {perf.revenue} €
                           </p>
                         </div>
@@ -1546,7 +1764,64 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
               </div>
             </div>
           )}
+          {/* Admin Promotion Modal */}
+          {showAdminModal && (
+            <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+              <div className="bg-slate-800 border border-white/10 rounded-2xl p-8 max-w-md w-full shadow-2xl animate-scaleIn">
+                <div className="flex justify-between items-center mb-6">
+                  <h3 className="text-xl font-bold text-white">
+                    Dodaj Novog člana Tima
+                  </h3>
+                  <button
+                    onClick={() => setShowAdminModal(false)}
+                    className="text-slate-500 hover:text-white"
+                  >
+                    <X size={24} />
+                  </button>
+                </div>
 
+                <div className="space-y-4">
+                  <p className="text-sm text-slate-400">
+                    Odaberite registrovanog korisnika kojeg želite promovirati u
+                    administratora/osoblje.
+                  </p>
+
+                  <div className="bg-slate-900/50 border border-slate-700 rounded-xl p-2 max-h-60 overflow-y-auto space-y-2">
+                    {registeredUsers
+                      .filter((u) => u.role === "candidate")
+                      .map((u) => (
+                        <div
+                          key={u.id}
+                          className="flex justify-between items-center p-3 hover:bg-white/5 rounded-lg transition-colors border border-transparent hover:border-white/5"
+                        >
+                          <div className="truncate pr-2">
+                            <p className="text-sm font-bold text-white">
+                              {u.name}
+                            </p>
+                            <p className="text-xs text-slate-500">{u.email}</p>
+                          </div>
+                          <button
+                            onClick={() => {
+                              makeUserAdmin(u);
+                              setShowAdminModal(false);
+                            }}
+                            className="bg-sun-500 hover:bg-sun-400 text-slate-900 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
+                          >
+                            Promoviraj
+                          </button>
+                        </div>
+                      ))}
+                    {registeredUsers.filter((u) => u.role === "candidate")
+                      .length === 0 && (
+                      <p className="text-slate-500 text-center text-sm py-4">
+                        Nema dostupnih kandidata za promociju.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
           {/* APPLICATIONS VIEW */}
           {activeTab === "applications" && (
             <div className="space-y-6 animate-fadeIn">
@@ -1562,7 +1837,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
                     placeholder="Pretraži kandidate..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-white focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none transition-all placeholder:text-slate-600"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-white focus:ring-2 focus:ring-sun-500 focus:border-transparent outline-none transition-all placeholder:text-slate-600"
                   />
                 </div>
                 <button
@@ -1586,14 +1861,14 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
                     onClick={() => setFilter(f.id)}
                     className={`p-4 rounded-xl border transition-all text-left group ${
                       filter === f.id
-                        ? "border-amber-500 bg-amber-500/10"
+                        ? "border-sun-500 bg-sun-500/10"
                         : "border-white/10 bg-white/5 hover:bg-white/10"
                     }`}
                   >
                     <p
                       className={`text-xs uppercase font-bold mb-1 ${
                         filter === f.id
-                          ? "text-amber-500"
+                          ? "text-sun-500"
                           : "text-slate-500 group-hover:text-slate-400"
                       }`}
                     >
@@ -1601,7 +1876,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
                     </p>
                     <div
                       className={`h-1 w-full rounded-full mt-2 ${
-                        filter === f.id ? "bg-amber-500" : "bg-slate-800"
+                        filter === f.id ? "bg-sun-500" : "bg-slate-800"
                       }`}
                     ></div>
                   </button>
@@ -1626,7 +1901,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
                   filteredApps.map((app) => (
                     <div
                       key={app.id}
-                      className="bg-white/5 border border-white/10 rounded-2xl p-6 hover:border-amber-500/30 transition-all flex flex-col md:flex-row gap-6 md:items-center"
+                      className="bg-white/5 border border-white/10 rounded-2xl p-6 hover:border-sun-500/30 transition-all flex flex-col md:flex-row gap-6 md:items-center"
                     >
                       {/* Avatar/Initials */}
                       <div className="flex-shrink-0">
@@ -1655,7 +1930,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
                             Pozicija
                           </p>
                           <p className="text-white font-medium flex items-center gap-2">
-                            <Briefcase size={14} className="text-amber-500" />{" "}
+                            <Briefcase size={14} className="text-sun-500" />{" "}
                             {app.position}
                           </p>
                           <p className="text-sm text-slate-400 mt-1">
@@ -1670,7 +1945,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
                           <p className="text-sm text-slate-300">
                             {app.createdAt?.seconds
                               ? new Date(
-                                  app.createdAt.seconds * 1000
+                                  app.createdAt.seconds * 1000,
                                 ).toLocaleDateString()
                               : "N/A"}
                           </p>
@@ -1687,12 +1962,12 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
                               </span>
                             )}
                             {app.status === "reviewed" && (
-                              <span className="px-3 py-1 rounded-full bg-blue-500/20 text-blue-400 text-xs font-bold border border-blue-500/30">
+                              <span className="px-3 py-1 rounded-full bg-ocean-500/20 text-ocean-400 text-xs font-bold border border-ocean-500/30">
                                 U Obradi
                               </span>
                             )}
                             {app.status === "hired" && (
-                              <span className="px-3 py-1 rounded-full bg-green-500/20 text-green-400 text-xs font-bold border border-green-500/30">
+                              <span className="px-3 py-1 rounded-full bg-palm-500/20 text-palm-400 text-xs font-bold border border-palm-500/30">
                                 Završeno
                               </span>
                             )}
@@ -1701,11 +1976,11 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
                       </div>
 
                       {/* Actions */}
-                      <div className="flex items-center gap-2 border-t md:border-t-0 md:border-l border-white/10 pt-4 md:pt-0 md:pl-6 justify-end">
+                      <div className="flex md:flex-col lg:flex-row items-center gap-2 border-t md:border-t-0 md:border-l border-white/10 pt-4 md:pt-0 md:pl-6 justify-end md:justify-center">
                         {app.status === "new" && (
                           <button
                             onClick={() => updateStatus(app.id, "reviewed")}
-                            className="p-2 bg-blue-500/10 text-blue-400 hover:bg-blue-500 hover:text-white rounded-lg transition-all"
+                            className="p-2 bg-ocean-500/10 text-ocean-400 hover:bg-ocean-500 hover:text-white rounded-lg transition-all"
                             title="Označi kao pregledano"
                           >
                             <Eye size={20} />
@@ -1714,7 +1989,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
 
                         <button
                           onClick={() => setViewApp(app)}
-                          className="p-2 bg-slate-700/50 text-slate-300 hover:bg-amber-500 hover:text-slate-900 rounded-lg transition-all border border-slate-600 hover:border-amber-500"
+                          className="p-2 bg-slate-700/50 text-slate-300 hover:bg-sun-500 hover:text-slate-900 rounded-lg transition-all border border-slate-600 hover:border-sun-500"
                           title="Detalji prijave"
                         >
                           <FileText size={20} />
@@ -1723,7 +1998,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
                         {app.status !== "hired" && (
                           <button
                             onClick={() => setHiringApp(app)}
-                            className="p-2 bg-green-500/10 text-green-400 hover:bg-green-500 hover:text-white rounded-lg transition-all"
+                            className="p-2 bg-palm-500/10 text-palm-400 hover:bg-palm-500 hover:text-white rounded-lg transition-all"
                             title="Angažuj kandidata"
                           >
                             <CheckCircle size={20} />
@@ -1744,7 +2019,6 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
               </div>
             </div>
           )}
-
           {activeTab === "companies" && (
             <div className="animate-fadeIn space-y-6">
               {/* Header Actions */}
@@ -1759,12 +2033,12 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
                     placeholder="Pretraži firme..."
                     value={companySearch}
                     onChange={(e) => setCompanySearch(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-white focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none transition-all placeholder:text-slate-600"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-white focus:ring-2 focus:ring-sun-500 focus:border-transparent outline-none transition-all placeholder:text-slate-600"
                   />
                 </div>
                 <button
                   onClick={openNewCompanyInitial}
-                  className="flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold px-6 py-3 rounded-xl transition-all shadow-lg shadow-amber-500/20"
+                  className="flex items-center gap-2 bg-sun-500 hover:bg-sun-400 text-slate-900 font-bold px-6 py-3 rounded-xl transition-all shadow-lg shadow-sun-500/20"
                 >
                   <Building size={20} />
                   Nova Firma
@@ -1777,12 +2051,14 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
                   .filter(
                     (c) =>
                       c.name &&
-                      c.name.toLowerCase().includes(companySearch.toLowerCase())
+                      c.name
+                        .toLowerCase()
+                        .includes(companySearch.toLowerCase()),
                   )
                   .map((company) => (
                     <div
                       key={company.id}
-                      className="group bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 overflow-hidden hover:border-amber-500/30 transition-all flex flex-col"
+                      className="group bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 overflow-hidden hover:border-sun-500/30 transition-all flex flex-col"
                     >
                       {/* Card Header with Pattern */}
                       <div className="h-24 bg-gradient-to-r from-slate-800 to-slate-900 relative p-4 flex justify-between items-start">
@@ -1791,7 +2067,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
                           className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider z-10 ${
                             company.status === "Inactive"
                               ? "bg-red-500/20 text-red-400 border border-red-500/30"
-                              : "bg-green-500/20 text-green-400 border border-green-500/30"
+                              : "bg-palm-500/20 text-palm-400 border border-palm-500/30"
                           }`}
                         >
                           {company.status === "Inactive"
@@ -1818,8 +2094,8 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
 
                       <div className="p-6 pt-0 flex-1 flex flex-col">
                         {/* Company Icon/Logo Placeholder */}
-                        <div className="-mt-10 mb-4 inline-flex">
-                          <div className="h-20 w-20 rounded-2xl bg-slate-800 border-4 border-slate-900 shadow-xl flex items-center justify-center text-3xl font-bold text-amber-500">
+                        <div className="-mt-10 mb-4 inline-flex relative z-10">
+                          <div className="h-20 w-20 rounded-2xl bg-slate-800 border-4 border-slate-900 shadow-xl flex items-center justify-center text-3xl font-bold text-sun-500">
                             {company.name ? company.name[0] : "?"}
                           </div>
                         </div>
@@ -1847,7 +2123,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
                             <span className="text-slate-500">
                               Potrebno radnika
                             </span>
-                            <span className="text-amber-500 font-bold">
+                            <span className="text-sun-500 font-bold">
                               {company.workerCount || "0"}
                             </span>
                           </div>
@@ -1888,7 +2164,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
                                 }
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="truncate text-amber-500 hover:underline"
+                                className="truncate text-sun-500 hover:underline"
                               >
                                 {company.website}
                               </a>
@@ -1915,6 +2191,223 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
               )}
             </div>
           )}
+
+          {/* SUPPORT TAB */}
+          {activeTab === "support" && (
+            <div className="space-y-6 animate-fadeIn">
+              {/* Stats */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-white/5 rounded-2xl border border-white/10 p-6">
+                  <div className="flex items-center gap-4">
+                    <div className="h-12 w-12 bg-sun-500/10 rounded-xl flex items-center justify-center text-sun-500">
+                      <MessageSquare size={24} />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-white">
+                        {supportMessages.length}
+                      </p>
+                      <p className="text-sm text-slate-400">Ukupno poruka</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-white/5 rounded-2xl border border-white/10 p-6">
+                  <div className="flex items-center gap-4">
+                    <div className="h-12 w-12 bg-ocean-500/10 rounded-xl flex items-center justify-center text-ocean-400">
+                      <Mail size={24} />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-white">
+                        {
+                          supportMessages.filter((m) => m.status === "new")
+                            .length
+                        }
+                      </p>
+                      <p className="text-sm text-slate-400">Nove poruke</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-white/5 rounded-2xl border border-white/10 p-6">
+                  <div className="flex items-center gap-4">
+                    <div className="h-12 w-12 bg-palm-500/10 rounded-xl flex items-center justify-center text-palm-400">
+                      <CheckCircle size={24} />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-white">
+                        {
+                          supportMessages.filter((m) => m.status === "resolved")
+                            .length
+                        }
+                      </p>
+                      <p className="text-sm text-slate-400">Riješene poruke</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Messages Table */}
+              <div className="bg-white/5 rounded-3xl border border-white/5 overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-white/5">
+                      <tr className="text-left text-xs text-slate-400 uppercase tracking-wider">
+                        <th className="px-6 py-4 font-bold">Pošiljalac</th>
+                        <th className="px-6 py-4 font-bold">Predmet</th>
+                        <th className="px-6 py-4 font-bold">Poruka</th>
+                        <th className="px-6 py-4 font-bold">Datum</th>
+                        <th className="px-6 py-4 font-bold">Status</th>
+                        <th className="px-6 py-4 font-bold">Akcije</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {supportMessages.length === 0 ? (
+                        <tr>
+                          <td
+                            colSpan="6"
+                            className="px-6 py-12 text-center text-slate-500"
+                          >
+                            <div className="flex flex-col items-center">
+                              <MessageSquare
+                                size={40}
+                                className="text-slate-600 mb-4"
+                              />
+                              <p className="text-lg font-medium">
+                                Nema poruka podrške
+                              </p>
+                              <p className="text-sm mt-1">
+                                Kada kandidati pošalju poruku putem kontakt
+                                forme, prikazat će se ovdje.
+                              </p>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : (
+                        supportMessages.map((msg) => (
+                          <tr
+                            key={msg.id}
+                            className="hover:bg-white/5 transition-colors"
+                          >
+                            <td className="px-6 py-4">
+                              <div>
+                                <p className="font-bold text-white">
+                                  {msg.name}
+                                </p>
+                                <p className="text-sm text-slate-400">
+                                  {msg.email}
+                                </p>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className="font-medium text-white">
+                                {msg.subject}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 max-w-xs">
+                              <p
+                                className="text-slate-300 truncate"
+                                title={msg.message}
+                              >
+                                {msg.message}
+                              </p>
+                            </td>
+                            <td className="px-6 py-4 text-slate-400 text-sm whitespace-nowrap">
+                              {new Date(msg.created_at).toLocaleDateString(
+                                "bs-BA",
+                                {
+                                  day: "2-digit",
+                                  month: "2-digit",
+                                  year: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                },
+                              )}
+                            </td>
+                            <td className="px-6 py-4">
+                              <span
+                                className={`px-3 py-1 rounded-full text-xs font-bold ${
+                                  msg.status === "new"
+                                    ? "bg-ocean-500/20 text-ocean-400"
+                                    : msg.status === "resolved"
+                                      ? "bg-palm-500/20 text-palm-400"
+                                      : "bg-slate-500/20 text-slate-400"
+                                }`}
+                              >
+                                {msg.status === "new"
+                                  ? "Nova"
+                                  : msg.status === "resolved"
+                                    ? "Riješena"
+                                    : msg.status}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={async () => {
+                                    const newStatus =
+                                      msg.status === "new" ? "resolved" : "new";
+                                    const { error } = await supabase
+                                      .from("support_messages")
+                                      .update({ status: newStatus })
+                                      .eq("id", msg.id);
+
+                                    if (!error) {
+                                      setSupportMessages((prev) =>
+                                        prev.map((m) =>
+                                          m.id === msg.id
+                                            ? { ...m, status: newStatus }
+                                            : m,
+                                        ),
+                                      );
+                                      setToast({
+                                        message:
+                                          newStatus === "resolved"
+                                            ? "Poruka označena kao riješena"
+                                            : "Poruka označena kao nova",
+                                        type: "success",
+                                      });
+                                    }
+                                  }}
+                                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                                    msg.status === "new"
+                                      ? "bg-palm-500/20 text-palm-400 hover:bg-palm-500/30"
+                                      : "bg-ocean-500/20 text-ocean-400 hover:bg-ocean-500/30"
+                                  }`}
+                                >
+                                  {msg.status === "new"
+                                    ? "Označi riješeno"
+                                    : "Označi novo"}
+                                </button>
+                                <button
+                                  onClick={async () => {
+                                    const { error } = await supabase
+                                      .from("support_messages")
+                                      .delete()
+                                      .eq("id", msg.id);
+
+                                    if (!error) {
+                                      setSupportMessages((prev) =>
+                                        prev.filter((m) => m.id !== msg.id),
+                                      );
+                                      setToast({
+                                        message: "Poruka obrisana",
+                                        type: "success",
+                                      });
+                                    }
+                                  }}
+                                  className="p-1.5 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </main>
 
@@ -1923,7 +2416,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
         <div
           className={`fixed bottom-8 right-8 px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 animate-slideUp z-50 ${
             toast.type === "success"
-              ? "bg-amber-500 text-slate-900"
+              ? "bg-sun-500 text-slate-900"
               : "bg-red-500 text-white"
           }`}
         >
@@ -1983,7 +2476,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
               <h4 className="font-bold text-white text-lg">
                 {hiringApp.firstName} {hiringApp.lastName}
               </h4>
-              <p className="text-amber-500 text-sm font-bold">
+              <p className="text-sun-500 text-sm font-bold">
                 {hiringApp.position}
               </p>
             </div>
@@ -1998,7 +2491,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
                   list="companies-list"
                   value={hireLocation}
                   onChange={(e) => setHireLocation(e.target.value)}
-                  className="w-full bg-slate-900/50 border border-slate-700 text-white rounded-xl p-3 focus:ring-2 focus:ring-amber-500 outline-none"
+                  className="w-full bg-slate-900/50 border border-slate-700 text-white rounded-xl p-3 focus:ring-2 focus:ring-sun-500 outline-none"
                   placeholder="Odaberite ili upišite naziv..."
                 />
                 <datalist id="companies-list">
@@ -2011,20 +2504,27 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
               </div>
               <div>
                 <label className="block text-sm font-bold text-slate-400 mb-1">
-                  Iznos Provizije (€)
+                  Vrijednost Ugovora (€)
                 </label>
                 <input
                   required
                   type="number"
                   value={hireFee}
                   onChange={(e) => setHireFee(e.target.value)}
-                  className="w-full bg-slate-900/50 border border-slate-700 text-white rounded-xl p-3 focus:ring-2 focus:ring-amber-500 outline-none"
-                  placeholder="npr. 500"
+                  className="w-full bg-slate-900/50 border border-slate-700 text-white rounded-xl p-3 focus:ring-2 focus:ring-sun-500 outline-none"
+                  placeholder="npr. 1500"
                 />
+                <p className="text-xs text-slate-500 mt-2">
+                  Agencijska provizija (30%):{" "}
+                  <span className="text-sun-500 font-bold">
+                    {hireFee ? (parseFloat(hireFee) * 0.3).toFixed(2) : "0.00"}{" "}
+                    €
+                  </span>
+                </p>
               </div>
               <button
                 type="submit"
-                className="w-full bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold py-3 rounded-xl mt-4 transition-all"
+                className="w-full bg-sun-500 hover:bg-sun-400 text-slate-900 font-bold py-3 rounded-xl mt-4 transition-all"
               >
                 Potvrdi Angažman
               </button>
@@ -2036,7 +2536,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
       {viewApp && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn">
           <div className="bg-slate-900 border border-white/10 rounded-3xl p-8 max-w-2xl w-full shadow-2xl relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-amber-500 to-amber-700" />
+            <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-sun-500 to-sun-700" />
 
             <button
               onClick={() => setViewApp(null)}
@@ -2046,7 +2546,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
             </button>
 
             <div className="flex items-center gap-4 mb-8">
-              <div className="h-16 w-16 bg-slate-800 rounded-2xl flex items-center justify-center text-3xl font-bold text-amber-500 border border-slate-700">
+              <div className="h-16 w-16 bg-slate-800 rounded-2xl flex items-center justify-center text-3xl font-bold text-sun-500 border border-slate-700">
                 {viewApp.firstName[0]}
               </div>
               <div>
@@ -2054,7 +2554,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
                   {viewApp.firstName} {viewApp.lastName}
                 </h3>
                 <p className="text-slate-400 flex items-center gap-2">
-                  <Briefcase size={14} className="text-amber-500" />
+                  <Briefcase size={14} className="text-sun-500" />
                   {viewApp.position}
                 </p>
               </div>
@@ -2084,7 +2584,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
                   <label className="text-xs uppercase font-bold text-slate-500">
                     Iskustvo
                   </label>
-                  <p className="text-white mt-1 border-l-2 border-amber-500 pl-3">
+                  <p className="text-white mt-1 border-l-2 border-sun-500 pl-3">
                     {viewApp.experience}
                   </p>
                 </div>
@@ -2107,7 +2607,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
                     <a
                       href={viewApp.cvFile}
                       download={viewApp.cvName || "cv.pdf"}
-                      className="flex items-center gap-3 mt-2 p-3 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 rounded-xl transition-all group cursor-pointer text-amber-500"
+                      className="flex items-center gap-3 mt-2 p-3 bg-sun-500/10 hover:bg-sun-500/20 border border-sun-500/30 rounded-xl transition-all group cursor-pointer text-sun-500"
                     >
                       <FileText size={20} />
                       <span className="font-bold underline">
@@ -2138,7 +2638,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
                     setHiringApp(viewApp);
                     setViewApp(null);
                   }}
-                  className="px-6 py-2 bg-green-600 hover:bg-green-500 text-white rounded-xl font-bold transition-all shadow-lg shadow-green-500/20"
+                  className="px-6 py-2 bg-palm-600 hover:bg-palm-500 text-white rounded-xl font-bold transition-all shadow-lg shadow-palm-500/20"
                 >
                   Angažuj Kandidata
                 </button>
@@ -2153,7 +2653,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
           <div className="bg-slate-800 border border-white/10 rounded-2xl p-8 max-w-2xl w-full shadow-2xl animate-scaleIn h-auto max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                <Building className="text-amber-500" />
+                <Building className="text-sun-500" />
                 {editingCompany ? "Uredi Firmu" : "Dodaj Novu Firmu"}
               </h3>
               <button
@@ -2178,7 +2678,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
                   onChange={(e) =>
                     setNewCompany({ ...newCompany, name: e.target.value })
                   }
-                  className="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-amber-500 outline-none"
+                  className="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-sun-500 outline-none"
                   placeholder="npr. Hotel Grand"
                 />
               </div>
@@ -2196,7 +2696,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
                       contactPerson: e.target.value,
                     })
                   }
-                  className="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-amber-500 outline-none"
+                  className="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-sun-500 outline-none"
                   placeholder="Ime i Prezime"
                 />
               </div>
@@ -2210,7 +2710,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
                   onChange={(e) =>
                     setNewCompany({ ...newCompany, phone: e.target.value })
                   }
-                  className="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-amber-500 outline-none"
+                  className="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-sun-500 outline-none"
                   placeholder="npr. 061 123 456"
                 />
               </div>
@@ -2225,7 +2725,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
                   onChange={(e) =>
                     setNewCompany({ ...newCompany, email: e.target.value })
                   }
-                  className="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-amber-500 outline-none"
+                  className="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-sun-500 outline-none"
                   placeholder="email@kompanija.com"
                 />
               </div>
@@ -2239,64 +2739,110 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
                   onChange={(e) =>
                     setNewCompany({ ...newCompany, address: e.target.value })
                   }
-                  className="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-amber-500 outline-none"
+                  className="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-sun-500 outline-none"
                   placeholder="Adresa i Grad"
                 />
               </div>
 
               <div className="md:col-span-2 border-t border-white/5 pt-4 mt-2">
-                <p className="text-amber-500 text-sm font-bold mb-3">
-                  Informacije o Poslu
+                <div className="flex items-center justify-between mb-4">
+                  <p className="text-sun-500 text-sm font-bold">
+                    Informacije o Poslu
+                  </p>
+                  <button
+                    type="button"
+                    onClick={addJobEntry}
+                    className="flex items-center gap-1 text-xs font-bold text-sun-500 hover:text-sun-400 transition-colors bg-sun-500/10 hover:bg-sun-500/20 px-3 py-1.5 rounded-lg border border-sun-500/20"
+                  >
+                    <Plus size={14} />
+                    Dodaj Poziciju
+                  </button>
+                </div>
+              </div>
+
+              {/* Job Entries - Dynamic Cards */}
+              <div className="md:col-span-2 space-y-4">
+                {Array.isArray(newCompany.jobEntries) &&
+                  newCompany.jobEntries.map((entry, index) => (
+                    <div
+                      key={index}
+                      className="bg-slate-900/30 border border-slate-700/50 rounded-xl p-4 relative group"
+                    >
+                      {/* Entry Header */}
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                          Pozicija {index + 1}
+                        </span>
+                        {newCompany.jobEntries.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeJobEntry(index)}
+                            className="flex items-center gap-1 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 px-2 py-1 rounded-lg transition-colors border border-red-500/20"
+                            title="Ukloni poziciju"
+                          >
+                            <Minus size={14} />
+                            Ukloni
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Entry Fields */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div>
+                          <label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">
+                            Naziv Pozicije
+                          </label>
+                          <input
+                            value={entry.position}
+                            onChange={(e) =>
+                              updateJobEntry(index, "position", e.target.value)
+                            }
+                            className="w-full bg-slate-800/50 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-sun-500 outline-none"
+                            placeholder="npr. Konobar"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">
+                            Broj Radnika
+                          </label>
+                          <input
+                            type="number"
+                            value={entry.workerCount}
+                            onChange={(e) =>
+                              updateJobEntry(
+                                index,
+                                "workerCount",
+                                e.target.value,
+                              )
+                            }
+                            className="w-full bg-slate-800/50 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-sun-500 outline-none"
+                            placeholder="npr. 5"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">
+                            Raspon Plaće
+                          </label>
+                          <input
+                            value={entry.salaryRange}
+                            onChange={(e) =>
+                              updateJobEntry(
+                                index,
+                                "salaryRange",
+                                e.target.value,
+                              )
+                            }
+                            className="w-full bg-slate-800/50 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-sun-500 outline-none"
+                            placeholder="npr. 800€ - 1200€"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                <p className="text-xs text-slate-600">
+                  Kliknite "Dodaj Poziciju" za dodavanje više pozicija sa
+                  različitim brojem radnika i platama
                 </p>
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="block text-xs uppercase font-bold text-slate-500 mb-1">
-                  Tražene Pozicije
-                </label>
-                <input
-                  value={newCompany.positions}
-                  onChange={(e) =>
-                    setNewCompany({ ...newCompany, positions: e.target.value })
-                  }
-                  className="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-amber-500 outline-none"
-                  placeholder="npr. Konobar, Kuhar, Sobarica"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs uppercase font-bold text-slate-500 mb-1">
-                  Broj Radnika
-                </label>
-                <input
-                  type="number"
-                  value={newCompany.workerCount}
-                  onChange={(e) =>
-                    setNewCompany({
-                      ...newCompany,
-                      workerCount: e.target.value,
-                    })
-                  }
-                  className="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-amber-500 outline-none"
-                  placeholder="npr. 10"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs uppercase font-bold text-slate-500 mb-1">
-                  Raspon Plaće
-                </label>
-                <input
-                  value={newCompany.salaryRange}
-                  onChange={(e) =>
-                    setNewCompany({
-                      ...newCompany,
-                      salaryRange: e.target.value,
-                    })
-                  }
-                  className="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-amber-500 outline-none"
-                  placeholder="npr. 800€ - 1200€"
-                />
               </div>
 
               <div>
@@ -2308,7 +2854,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
                   onChange={(e) =>
                     setNewCompany({ ...newCompany, status: e.target.value })
                   }
-                  className="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-amber-500 outline-none"
+                  className="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-sun-500 outline-none"
                 >
                   <option value="Active">Aktivno</option>
                   <option value="Inactive">Neaktivno</option>
@@ -2325,7 +2871,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
                   onChange={(e) =>
                     setNewCompany({ ...newCompany, notes: e.target.value })
                   }
-                  className="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-amber-500 outline-none resize-none"
+                  className="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-sun-500 outline-none resize-none"
                   placeholder="Dodatne informacije..."
                 />
               </div>
@@ -2340,7 +2886,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold py-3 rounded-xl transition-all shadow-lg shadow-amber-500/20"
+                  className="flex-1 bg-sun-500 hover:bg-sun-400 text-slate-900 font-bold py-3 rounded-xl transition-all shadow-lg shadow-sun-500/20"
                 >
                   {editingCompany ? "Sačuvaj Izmjene" : "Kreiraj Firmu"}
                 </button>

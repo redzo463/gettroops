@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import {
-  Users,
   Menu,
   X,
   ShieldAlert,
@@ -12,12 +11,16 @@ import {
   Info,
   Phone,
 } from "lucide-react";
+import { supabase } from "../lib/supabase";
 
 const Navbar = ({ setPage, currentPage, currentUser, setCurrentUser }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    // Clear Supabase session
+    await supabase.auth.signOut();
+    // Clear local storage
     localStorage.removeItem("current_user");
     setCurrentUser(null);
     setPage("home");
@@ -48,7 +51,7 @@ const Navbar = ({ setPage, currentPage, currentUser, setCurrentUser }) => {
   const isHome = currentPage === "home";
   const navClasses = `fixed w-full z-50 transition-all duration-300 ${
     scrolled || !isHome || isOpen
-      ? "bg-slate-900 shadow-lg py-2"
+      ? "bg-gradient-to-r from-slate-900 via-ocean-900 to-slate-900 shadow-lg py-2"
       : "bg-transparent py-4"
   }`;
 
@@ -58,20 +61,18 @@ const Navbar = ({ setPage, currentPage, currentUser, setCurrentUser }) => {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <div
-            className="flex items-center cursor-pointer gap-3 group relative z-50"
+            className="flex items-center gap-3 cursor-pointer group relative z-50"
             onClick={() => setPage("home")}
           >
-            <div className="bg-amber-500 p-2 rounded-xl shadow-lg shadow-amber-500/20 group-hover:shadow-amber-500/40 transition-all duration-300">
-              <Users className="h-6 w-6 text-slate-900" />
-            </div>
-            <div>
-              <span className="font-bold text-xl tracking-wider block text-white group-hover:text-amber-400 transition-colors">
-                GET TROOPS
-              </span>
-              <span className="hidden sm:block text-[10px] text-amber-500 tracking-[0.2em] uppercase font-semibold">
-                Staffing Agency
-              </span>
-            </div>
+            <img
+              src="/logo.png"
+              alt="MOJA SEZONA"
+              className="h-12 w-auto object-contain group-hover:scale-105 transition-transform duration-300 drop-shadow-lg"
+            />
+            <span className="font-bold text-xl tracking-wider hidden sm:block">
+              <span className="text-white">MOJA</span>{" "}
+              <span className="text-sun-400">SEZONA</span>
+            </span>
           </div>
 
           {/* Desktop Menu */}
@@ -81,13 +82,13 @@ const Navbar = ({ setPage, currentPage, currentUser, setCurrentUser }) => {
                 onClick={() => setPage("home")}
                 className={`text-sm font-medium transition-all duration-300 relative group ${
                   currentPage === "home"
-                    ? "text-amber-500"
+                    ? "text-sea-400"
                     : "text-slate-300 hover:text-white"
                 }`}
               >
                 Početna
                 <span
-                  className={`absolute -bottom-1 left-0 h-0.5 bg-amber-500 transition-all duration-300 ${
+                  className={`absolute -bottom-1 left-0 h-0.5 bg-gradient-to-r from-sea-400 to-sun-500 transition-all duration-300 ${
                     currentPage === "home" ? "w-full" : "w-0 group-hover:w-full"
                   }`}
                 ></span>
@@ -96,13 +97,13 @@ const Navbar = ({ setPage, currentPage, currentUser, setCurrentUser }) => {
                 onClick={() => setPage("about")}
                 className={`text-sm font-medium transition-all duration-300 relative group ${
                   currentPage === "about"
-                    ? "text-amber-500"
+                    ? "text-sea-400"
                     : "text-slate-300 hover:text-white"
                 }`}
               >
                 O Nama
                 <span
-                  className={`absolute -bottom-1 left-0 h-0.5 bg-amber-500 transition-all duration-300 ${
+                  className={`absolute -bottom-1 left-0 h-0.5 bg-gradient-to-r from-sea-400 to-sun-500 transition-all duration-300 ${
                     currentPage === "about"
                       ? "w-full"
                       : "w-0 group-hover:w-full"
@@ -113,13 +114,13 @@ const Navbar = ({ setPage, currentPage, currentUser, setCurrentUser }) => {
                 onClick={() => setPage("contact")}
                 className={`text-sm font-medium transition-all duration-300 relative group ${
                   currentPage === "contact"
-                    ? "text-amber-500"
+                    ? "text-sea-400"
                     : "text-slate-300 hover:text-white"
                 }`}
               >
                 Kontakt
                 <span
-                  className={`absolute -bottom-1 left-0 h-0.5 bg-amber-500 transition-all duration-300 ${
+                  className={`absolute -bottom-1 left-0 h-0.5 bg-gradient-to-r from-sea-400 to-sun-500 transition-all duration-300 ${
                     currentPage === "contact"
                       ? "w-full"
                       : "w-0 group-hover:w-full"
@@ -128,8 +129,8 @@ const Navbar = ({ setPage, currentPage, currentUser, setCurrentUser }) => {
               </button>
               {/* Call to Action Button */}
               {currentUser ? (
-                <div className="flex items-center gap-3 pl-4 border-l border-slate-700/50">
-                  <div className="flex items-center gap-3 bg-slate-800/50 p-1 pl-3 pr-1 rounded-full border border-slate-700 hover:border-amber-500/30 transition-all">
+                <div className="flex items-center gap-3 pl-4 border-l border-ocean-700/50">
+                  <div className="flex items-center gap-3 bg-slate-800/50 p-1 pl-3 pr-1 rounded-full border border-ocean-700 hover:border-sea-500/30 transition-all">
                     <span className="text-sm font-bold text-slate-300">
                       {currentUser.name}
                     </span>
@@ -147,7 +148,7 @@ const Navbar = ({ setPage, currentPage, currentUser, setCurrentUser }) => {
                     currentUser.role === "master") && (
                     <button
                       onClick={() => setPage("dashboard")}
-                      className="flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-slate-900 transition-all shadow-lg hover:bg-white bg-amber-500 shadow-amber-500/20"
+                      className="flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-white transition-all shadow-lg hover:bg-sea-400 bg-sea-500 shadow-sea-500/20"
                       title="Moj Dashboard"
                     >
                       <User size={18} />
@@ -159,21 +160,35 @@ const Navbar = ({ setPage, currentPage, currentUser, setCurrentUser }) => {
                   <button
                     onClick={() =>
                       setPage(
-                        currentUser.role === "candidate" ? "dashboard" : "admin"
+                        currentUser.role === "candidate" &&
+                          (!currentUser.email ||
+                            currentUser.email.toLowerCase() !==
+                              "rsbredzo@gmail.com")
+                          ? "dashboard"
+                          : "admin",
                       )
                     }
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-slate-900 transition-all shadow-lg hover:bg-white ${
-                      currentUser.role === "candidate"
-                        ? "bg-amber-500 shadow-amber-500/20"
-                        : "bg-red-500 text-white shadow-red-500/20 hover:text-red-500"
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold transition-all shadow-lg hover:opacity-90 ${
+                      currentUser.role === "candidate" &&
+                      (!currentUser.email ||
+                        currentUser.email.toLowerCase() !==
+                          "rsbredzo@gmail.com")
+                        ? "bg-gradient-to-r from-sea-500 to-sun-500 text-white shadow-sea-500/20"
+                        : "bg-red-500 text-white shadow-red-500/20 hover:bg-red-400"
                     }`}
                     title={
-                      currentUser.role === "candidate"
+                      currentUser.role === "candidate" &&
+                      (!currentUser.email ||
+                        currentUser.email.toLowerCase() !==
+                          "rsbredzo@gmail.com")
                         ? "Moj Dashboard"
                         : "Admin Panel"
                     }
                   >
-                    {currentUser.role === "candidate" ? (
+                    {currentUser.role === "candidate" &&
+                    (!currentUser.email ||
+                      currentUser.email.toLowerCase() !==
+                        "rsbredzo@gmail.com") ? (
                       <>
                         <User size={18} />
                         <span>Dashboard</span>
@@ -202,7 +217,7 @@ const Navbar = ({ setPage, currentPage, currentUser, setCurrentUser }) => {
           <div className="flex md:hidden relative z-50">
             <button
               onClick={() => setIsOpen(!isOpen)}
-              className="bg-slate-800 p-2 rounded-lg text-amber-500 hover:text-white hover:bg-amber-500 transition-colors shadow-lg"
+              className="bg-slate-800 p-2 rounded-lg text-sea-400 hover:text-white hover:bg-gradient-to-r hover:from-sea-500 hover:to-sun-500 transition-colors shadow-lg"
             >
               {isOpen ? (
                 <X className="h-6 w-6" />
@@ -216,7 +231,7 @@ const Navbar = ({ setPage, currentPage, currentUser, setCurrentUser }) => {
 
       {/* Mobile Menu Overlay */}
       <div
-        className={`md:hidden fixed inset-0 z-40 bg-slate-900 h-[100dvh] flex flex-col justify-center transition-transform duration-300 ease-in-out ${
+        className={`md:hidden fixed inset-0 z-40 bg-gradient-to-b from-slate-900 via-ocean-900 to-slate-900 h-[100dvh] flex flex-col justify-center transition-transform duration-300 ease-in-out ${
           isOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
@@ -228,7 +243,7 @@ const Navbar = ({ setPage, currentPage, currentUser, setCurrentUser }) => {
             }}
             className={`flex items-center gap-4 w-full px-6 py-5 rounded-2xl text-xl font-bold transition-all ${
               currentPage === "home"
-                ? "bg-amber-500/10 text-amber-500 border border-amber-500/20"
+                ? "bg-sea-500/10 text-sea-400 border border-sea-500/20"
                 : "text-slate-300 hover:bg-slate-800 hover:text-white"
             }`}
           >
@@ -242,7 +257,7 @@ const Navbar = ({ setPage, currentPage, currentUser, setCurrentUser }) => {
             }}
             className={`flex items-center gap-4 w-full px-6 py-5 rounded-2xl text-xl font-bold transition-all ${
               currentPage === "about"
-                ? "bg-amber-500/10 text-amber-500 border border-amber-500/20"
+                ? "bg-sea-500/10 text-sea-400 border border-sea-500/20"
                 : "text-slate-300 hover:bg-slate-800 hover:text-white"
             }`}
           >
@@ -255,13 +270,13 @@ const Navbar = ({ setPage, currentPage, currentUser, setCurrentUser }) => {
             }}
             className={`flex items-center gap-4 w-full px-6 py-5 rounded-2xl text-xl font-bold transition-all ${
               currentPage === "contact"
-                ? "bg-amber-500/10 text-amber-500 border border-amber-500/20"
+                ? "bg-sea-500/10 text-sea-400 border border-sea-500/20"
                 : "text-slate-300 hover:bg-slate-800 hover:text-white"
             }`}
           >
             <Phone size={24} /> Kontakt
           </button>
-          <div className="border-t border-slate-800 my-4"></div>
+          <div className="border-t border-ocean-800 my-4"></div>
 
           {/* Dashboard Link for Admins (Mobile) */}
           {currentUser &&
@@ -271,7 +286,7 @@ const Navbar = ({ setPage, currentPage, currentUser, setCurrentUser }) => {
                   setPage("dashboard");
                   setIsOpen(false);
                 }}
-                className="flex items-center justify-center gap-2 w-full px-4 py-4 mb-4 rounded-xl text-lg font-bold bg-amber-600 text-white shadow-lg active:scale-95 transition-all"
+                className="flex items-center justify-center gap-2 w-full px-4 py-4 mb-4 rounded-xl text-lg font-bold bg-gradient-to-r from-sea-500 to-sea-600 text-white shadow-lg active:scale-95 transition-all"
               >
                 <User size={20} /> Moj Dashboard
               </button>
@@ -288,7 +303,7 @@ const Navbar = ({ setPage, currentPage, currentUser, setCurrentUser }) => {
               else setPage("auth");
               setIsOpen(false);
             }}
-            className="flex items-center justify-center gap-2 w-full px-4 py-4 rounded-xl text-lg font-bold bg-amber-600 text-white shadow-lg active:scale-95 transition-all"
+            className="flex items-center justify-center gap-2 w-full px-4 py-4 rounded-xl text-lg font-bold bg-gradient-to-r from-sun-500 to-sun-600 text-white shadow-lg active:scale-95 transition-all"
           >
             {currentUser &&
             (currentUser.role === "staff" || currentUser.role === "master") ? (

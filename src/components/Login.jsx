@@ -28,12 +28,12 @@ const Login = ({ setPage, setAdminUser, db, appId, isDemo }) => {
       if (isDemo) {
         // Check sessionStorage
         const storedAdmins = JSON.parse(
-          sessionStorage.getItem("demo_admins") || "[]"
+          sessionStorage.getItem("demo_admins") || "[]",
         );
         foundUser = storedAdmins.find(
           (admin) =>
             admin.name.trim().toLowerCase() === name.trim().toLowerCase() &&
-            admin.code === code.trim()
+            admin.code === code.trim(),
         );
       } else {
         // Check Firestore
@@ -43,7 +43,7 @@ const Login = ({ setPage, setAdminUser, db, appId, isDemo }) => {
           appId,
           "public",
           "data",
-          "admins"
+          "admins",
         );
         const snapshot = await getDocs(q);
         snapshot.forEach((doc) => {
@@ -89,7 +89,7 @@ const Login = ({ setPage, setAdminUser, db, appId, isDemo }) => {
           Pristup za osoblje
         </h2>
         <p className="mt-2 text-center text-sm text-slate-400">
-          Samo za autorizovane agente Get Troops
+          Samo za autorizovane agente Mojasezona
         </p>
       </div>
 

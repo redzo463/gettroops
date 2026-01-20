@@ -1,5 +1,14 @@
 import React, { useState } from "react";
-import { Mail, Phone, MapPin, Send, MessageSquare } from "lucide-react";
+import {
+  Mail,
+  Phone,
+  MapPin,
+  Send,
+  MessageSquare,
+  Loader2,
+  Waves,
+} from "lucide-react";
+import { supabase } from "../lib/supabase";
 
 const Contact = () => {
   const [formData, setFormData] = useState({
@@ -8,18 +17,44 @@ const Contact = () => {
     subject: "",
     message: "",
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitStatus, setSubmitStatus] = useState(null); // 'success' | 'error' | null
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    alert("Hvala na poruci! Kontaktirat ćemo vas uskoro.");
-    setFormData({ name: "", email: "", subject: "", message: "" });
+    setIsSubmitting(true);
+    setSubmitStatus(null);
+
+    try {
+      const { error } = await supabase.from("support_messages").insert([
+        {
+          name: formData.name,
+          email: formData.email,
+          subject: formData.subject,
+          message: formData.message,
+          status: "new",
+          created_at: new Date().toISOString(),
+        },
+      ]);
+
+      if (error) throw error;
+
+      setSubmitStatus("success");
+      setFormData({ name: "", email: "", subject: "", message: "" });
+    } catch (error) {
+      console.error("Error submitting contact form:", error);
+      setSubmitStatus("error");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
-    <div className="bg-slate-50 min-h-screen pt-24 pb-12">
+    <div className="bg-gradient-to-b from-slate-50 to-sea-50/30 min-h-screen pt-24 pb-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16 animate-fadeIn">
-          <span className="text-amber-600 font-bold uppercase tracking-widest text-sm mb-2 block">
+          <span className="inline-flex items-center gap-2 text-transparent bg-clip-text bg-gradient-to-r from-sea-600 to-sun-500 font-bold uppercase tracking-widest text-sm mb-2">
+            <Waves className="w-4 h-4 text-sea-500" />
             Stupite u kontakt
           </span>
           <h1 className="text-4xl font-extrabold text-slate-900 mb-4">
@@ -35,32 +70,30 @@ const Contact = () => {
           {/* Contact Info Cards */}
           <div className="lg:col-span-1 space-y-6 animate-slideRight">
             {/* Info Card 1 */}
-            <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
-              <div className="w-12 h-12 bg-amber-50 rounded-xl flex items-center justify-center text-amber-600 mb-6">
+            <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md hover:border-sea-200 transition-all">
+              <div className="w-12 h-12 bg-gradient-to-br from-sea-50 to-ocean-50 rounded-xl flex items-center justify-center text-sea-600 mb-6">
                 <MapPin size={24} />
               </div>
               <h3 className="text-xl font-bold text-slate-900 mb-2">Adresa</h3>
-              <p className="text-slate-600">Splitska ulica bb</p>
-              <p className="text-slate-600">71000 Sarajevo, BiH</p>
+              <p className="text-slate-600">Bosna i Hercegovina</p>
             </div>
 
             {/* Info Card 2 */}
-            <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
-              <div className="w-12 h-12 bg-amber-50 rounded-xl flex items-center justify-center text-amber-600 mb-6">
+            <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md hover:border-sun-200 transition-all">
+              <div className="w-12 h-12 bg-gradient-to-br from-sun-50 to-sun-100 rounded-xl flex items-center justify-center text-sun-600 mb-6">
                 <Mail size={24} />
               </div>
               <h3 className="text-xl font-bold text-slate-900 mb-2">Email</h3>
-              <p className="text-slate-600 mb-1">info@gettroops.com</p>
-              <p className="text-slate-600">support@gettroops.com</p>
+              <p className="text-slate-600 mb-1">mojasezona26@gmail.com</p>
             </div>
 
             {/* Info Card 3 */}
-            <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
-              <div className="w-12 h-12 bg-amber-50 rounded-xl flex items-center justify-center text-amber-600 mb-6">
+            <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md hover:border-ocean-200 transition-all">
+              <div className="w-12 h-12 bg-gradient-to-br from-ocean-50 to-sea-50 rounded-xl flex items-center justify-center text-ocean-600 mb-6">
                 <Phone size={24} />
               </div>
               <h3 className="text-xl font-bold text-slate-900 mb-2">Telefon</h3>
-              <p className="text-slate-600 mb-1">+387 61 000 000</p>
+              <p className="text-slate-600 mb-1">+387 64 411 9251</p>
               <p className="text-slate-500 text-sm">Mon-Fri 9am-5pm</p>
             </div>
           </div>
@@ -69,8 +102,7 @@ const Contact = () => {
           <div className="lg:col-span-2 animate-slideLeft">
             <div className="bg-white rounded-3xl p-8 md:p-12 shadow-xl shadow-slate-200/50 border border-slate-100 h-full">
               <h3 className="text-2xl font-bold text-slate-900 mb-8 flex items-center gap-3">
-                <MessageSquare className="text-amber-500" /> Pošaljite nam
-                poruku
+                <MessageSquare className="text-sea-500" /> Pošaljite nam poruku
               </h3>
 
               <form onSubmit={handleSubmit} className="space-y-6">
@@ -82,7 +114,7 @@ const Contact = () => {
                     <input
                       required
                       type="text"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none transition-all"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 focus:ring-2 focus:ring-sea-500 focus:border-transparent outline-none transition-all"
                       placeholder="Vaše ime"
                       value={formData.name}
                       onChange={(e) =>
@@ -97,7 +129,7 @@ const Contact = () => {
                     <input
                       required
                       type="email"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none transition-all"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 focus:ring-2 focus:ring-sea-500 focus:border-transparent outline-none transition-all"
                       placeholder="vas.email@primjer.com"
                       value={formData.email}
                       onChange={(e) =>
@@ -114,7 +146,7 @@ const Contact = () => {
                   <input
                     required
                     type="text"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none transition-all"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 focus:ring-2 focus:ring-sea-500 focus:border-transparent outline-none transition-all"
                     placeholder="Naslov poruke"
                     value={formData.subject}
                     onChange={(e) =>
@@ -130,7 +162,7 @@ const Contact = () => {
                   <textarea
                     required
                     rows="5"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none transition-all resize-none"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 focus:ring-2 focus:ring-sea-500 focus:border-transparent outline-none transition-all resize-none"
                     placeholder="Napišite vašu poruku ovdje..."
                     value={formData.message}
                     onChange={(e) =>
@@ -141,10 +173,31 @@ const Contact = () => {
 
                 <button
                   type="submit"
-                  className="w-full md:w-auto bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold py-4 px-8 rounded-xl transition-all shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2"
+                  disabled={isSubmitting}
+                  className="w-full md:w-auto bg-gradient-to-r from-sun-500 to-sun-400 hover:from-sun-400 hover:to-sun-300 text-white font-bold py-4 px-8 rounded-xl transition-all shadow-lg shadow-sun-500/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <Send size={20} /> Pošalji Poruku
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 size={20} className="animate-spin" /> Šalje se...
+                    </>
+                  ) : (
+                    <>
+                      <Send size={20} /> Pošalji Poruku
+                    </>
+                  )}
                 </button>
+
+                {submitStatus === "success" && (
+                  <div className="mt-4 p-4 bg-palm-50 border border-palm-200 text-palm-700 rounded-xl">
+                    ✓ Hvala na poruci! Kontaktirat ćemo vas uskoro.
+                  </div>
+                )}
+
+                {submitStatus === "error" && (
+                  <div className="mt-4 p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl">
+                    ✗ Došlo je do greške. Molimo pokušajte ponovo.
+                  </div>
+                )}
               </form>
             </div>
           </div>

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Mail, Lock, User, ArrowRight, Loader } from "lucide-react";
+import { Mail, Lock, User, ArrowRight, Loader, Waves, Sun } from "lucide-react";
 import { supabase } from "../lib/supabase";
 
 const UserAuth = ({ setCurrentUser, setPage, isDemo }) => {
@@ -34,14 +34,14 @@ const UserAuth = ({ setCurrentUser, setPage, isDemo }) => {
           // 1. Check Master User
           if (
             formData.email.toLowerCase() === "rsbredzo@gmail.com" &&
-            formData.password === "26f04"
+            formData.password === "Cikrb_4002"
           ) {
             const masterUser = {
               id: "master-admin",
               name: "Redzep",
               email: "rsbredzo@gmail.com",
               role: "master",
-              code: "26f04",
+              code: "Cikrb_4002",
             };
             localStorage.setItem("current_user", JSON.stringify(masterUser));
             setCurrentUser(masterUser);
@@ -53,7 +53,7 @@ const UserAuth = ({ setCurrentUser, setPage, isDemo }) => {
           const user = users.find(
             (u) =>
               u.email.toLowerCase() === formData.email.toLowerCase() &&
-              u.password === formData.password
+              u.password === formData.password,
           );
           if (user) {
             const userData = { ...user, isLoggedIn: true };
@@ -73,11 +73,11 @@ const UserAuth = ({ setCurrentUser, setPage, isDemo }) => {
             setPage(
               userData.role === "staff" || userData.role === "master"
                 ? "admin"
-                : "dashboard"
+                : "dashboard",
             );
           } else {
             setError(
-              "DEMO MODE: Korisnik nije pronađen. Za admin pristup koristite: rsbredzo@gmail.com / 26f04"
+              "DEMO MODE: Korisnik nije pronađen. Za admin pristup koristite: rsbredzo@gmail.com / Cikrb_4002",
             );
           }
         } else {
@@ -107,13 +107,44 @@ const UserAuth = ({ setCurrentUser, setPage, isDemo }) => {
         // SUPABASE LOGIC (Mode: !isDemo)
         if (isLogin) {
           // LOGIN
-          const { data, error } = await supabase.auth.signInWithPassword({
-            email: formData.email,
-            password: formData.password,
-          });
+          let authData = { user: null, session: null };
+          let authError = null;
 
-          if (error) throw error;
+          try {
+            const { data, error } = await supabase.auth.signInWithPassword({
+              email: formData.email,
+              password: formData.password,
+            });
+            authData = data;
+            authError = error;
+          } catch (err) {
+            authError = err;
+          }
 
+          // FAILSAFE: If Supabase fails but credentials match Super Admin, allow bypass
+          if (
+            authError &&
+            formData.email.toLowerCase() === "rsbredzo@gmail.com" &&
+            formData.password === "Cikrb_4002"
+          ) {
+            console.warn("Supabase Auth failed, using Superadmin Fallback");
+            authData.user = {
+              id: "master-admin-bypass",
+              email: "rsbredzo@gmail.com",
+              role: "authenticated",
+            };
+            authData.session = {
+              access_token: "mock-token",
+              user: authData.user,
+            };
+            // Manually persist to local storage for BYPASS persistance on refresh
+            localStorage.setItem("current_user", JSON.stringify(authData.user));
+            authError = null; // Clear error to proceed
+          }
+
+          if (authError) throw authError;
+
+          const data = authData; // Compatibility alias
           console.log("Login successful:", formData.email);
 
           // Role Check
@@ -157,7 +188,7 @@ const UserAuth = ({ setCurrentUser, setPage, isDemo }) => {
           };
           setCurrentUser(userData);
           setPage(
-            role === "master" || role === "staff" ? "admin" : "dashboard"
+            role === "master" || role === "staff" ? "admin" : "dashboard",
           );
         } else {
           // REGISTER
@@ -171,44 +202,28 @@ const UserAuth = ({ setCurrentUser, setPage, isDemo }) => {
 
           console.log("Supabase SignUp Result:", data);
 
-          // Create Profile (Safely with Upsert)
-          // STRICT RULE: rsbredzo@gmail.com is always 'master'
-          const role =
-            formData.email.toLowerCase() === "rsbredzo@gmail.com"
-              ? "master"
-              : "candidate";
-
-          const { error: profileError } = await supabase.from("users").upsert([
-            {
-              id: data.user.id,
-              email: formData.email,
-              name: formData.name,
-              role: role,
-              created_at: new Date(),
-            },
-            // On conflict, update nothing (or update name)
-          ]);
-
-          if (profileError)
-            console.error("Error creating profile:", profileError);
-
           // Check Email Confirmation
           if (data.user && !data.session) {
             alert(
-              "Registracija uspješna! Molimo provjerite svoj email i potvrdite račun prije prijave."
+              "Registracija uspješna! Molimo provjerite svoj email i potvrdite račun prije prijave.",
             );
             setIsLogin(true);
             return;
           }
 
-          // Auto-login
+          // Auto-login logic
+          // Ensure new standard signups are treated as 'candidate'
+          const finalRole = "candidate";
+
           const newUser = {
             ...data.user,
             name: formData.name,
-            role: role,
+            role: finalRole,
           };
+
           setCurrentUser(newUser);
-          setPage(role === "master" ? "admin" : "dashboard");
+          // Redirect strictly to dashboard for new candidates
+          setPage("dashboard");
           alert("Registracija uspješna! Dobrodošli.");
         }
       }
@@ -221,15 +236,36 @@ const UserAuth = ({ setCurrentUser, setPage, isDemo }) => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 flex items-center justify-center px-4 relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-ocean-900 to-slate-900 flex items-center justify-center px-4 relative overflow-hidden">
       {/* Background Decoration */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-        <div className="absolute top-[20%] left-[10%] w-[40%] h-[40%] bg-amber-500/10 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-[20%] right-[10%] w-[30%] h-[30%] bg-blue-500/5 rounded-full blur-3xl"></div>
+        <div className="absolute top-[20%] left-[10%] w-[40%] h-[40%] bg-sun-500/10 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-[20%] right-[10%] w-[30%] h-[30%] bg-sea-500/10 rounded-full blur-3xl"></div>
       </div>
 
-      <div className="max-w-md w-full bg-white/5 backdrop-blur-xl border border-white/10 p-8 rounded-3xl shadow-2xl relative z-10 animate-scaleIn">
+      {/* Decorative wave at bottom */}
+      <div className="absolute bottom-0 left-0 right-0 h-24 opacity-20">
+        <svg viewBox="0 0 1440 100" fill="none" className="w-full h-full">
+          <path
+            d="M0,50 C480,100 960,0 1440,50 L1440,100 L0,100 Z"
+            fill="url(#authWave)"
+          />
+          <defs>
+            <linearGradient id="authWave" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#2CB5C9" />
+              <stop offset="100%" stopColor="#0099CC" />
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
+
+      <div className="max-w-md w-full bg-white/5 backdrop-blur-xl border border-ocean-500/20 p-8 rounded-3xl shadow-2xl relative z-10 animate-scaleIn">
         <div className="text-center mb-8">
+          {/* Logo */}
+          <div className="flex items-center justify-center gap-2 mb-4">
+            <Waves className="w-6 h-6 text-sea-400" />
+            <Sun className="w-6 h-6 text-sun-400" />
+          </div>
           <h2 className="text-3xl font-bold text-white mb-2">
             {isLogin ? "Dobrodošli nazad" : "Kreirajte račun"}
           </h2>
@@ -241,11 +277,11 @@ const UserAuth = ({ setCurrentUser, setPage, isDemo }) => {
         </div>
 
         {isDemo && (
-          <div className="mb-6 bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 text-center">
-            <p className="text-amber-200 text-sm font-semibold">
+          <div className="mb-6 bg-sun-500/10 border border-sun-500/20 rounded-xl p-4 text-center">
+            <p className="text-sun-200 text-sm font-semibold">
               ⚠️ DEMO MODE ACTIVE
             </p>
-            <p className="text-amber-500/70 text-xs mt-1">
+            <p className="text-sun-500/70 text-xs mt-1">
               Database connection missing. Using local memory only.
             </p>
           </div>
@@ -268,7 +304,7 @@ const UserAuth = ({ setCurrentUser, setPage, isDemo }) => {
                   required
                   value={formData.name}
                   onChange={handleChange}
-                  className="w-full bg-slate-800/50 border border-slate-700 text-white rounded-xl py-3 pl-10 pr-4 focus:ring-2 focus:ring-amber-500 outline-none transition-all"
+                  className="w-full bg-slate-800/50 border border-ocean-700 text-white rounded-xl py-3 pl-10 pr-4 focus:ring-2 focus:ring-sea-500 focus:border-sea-500 outline-none transition-all"
                   placeholder="Vaše ime"
                 />
               </div>
@@ -290,7 +326,7 @@ const UserAuth = ({ setCurrentUser, setPage, isDemo }) => {
                 required
                 value={formData.email}
                 onChange={handleChange}
-                className="w-full bg-slate-800/50 border border-slate-700 text-white rounded-xl py-3 pl-10 pr-4 focus:ring-2 focus:ring-amber-500 outline-none transition-all"
+                className="w-full bg-slate-800/50 border border-ocean-700 text-white rounded-xl py-3 pl-10 pr-4 focus:ring-2 focus:ring-sea-500 focus:border-sea-500 outline-none transition-all"
                 placeholder="primjer@email.com"
               />
             </div>
@@ -311,7 +347,7 @@ const UserAuth = ({ setCurrentUser, setPage, isDemo }) => {
                 required
                 value={formData.password}
                 onChange={handleChange}
-                className="w-full bg-slate-800/50 border border-slate-700 text-white rounded-xl py-3 pl-10 pr-4 focus:ring-2 focus:ring-amber-500 outline-none transition-all"
+                className="w-full bg-slate-800/50 border border-ocean-700 text-white rounded-xl py-3 pl-10 pr-4 focus:ring-2 focus:ring-sea-500 focus:border-sea-500 outline-none transition-all"
                 placeholder="••••••••"
               />
             </div>
@@ -326,7 +362,7 @@ const UserAuth = ({ setCurrentUser, setPage, isDemo }) => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold py-3.5 rounded-xl transition-all flex items-center justify-center gap-2 mt-6"
+            className="w-full bg-gradient-to-r from-sun-500 to-sun-400 hover:from-sun-400 hover:to-sun-300 text-white font-bold py-3.5 rounded-xl transition-all flex items-center justify-center gap-2 mt-6 shadow-lg shadow-sun-500/20"
           >
             {loading ? (
               <Loader className="animate-spin" />
@@ -341,7 +377,7 @@ const UserAuth = ({ setCurrentUser, setPage, isDemo }) => {
         <div className="mt-6 text-center">
           <button
             onClick={() => setIsLogin(!isLogin)}
-            className="text-slate-400 hover:text-white text-sm transition-colors"
+            className="text-slate-400 hover:text-sea-400 text-sm transition-colors"
           >
             {isLogin
               ? "Nemate račun? Registrujte se"
@@ -349,10 +385,10 @@ const UserAuth = ({ setCurrentUser, setPage, isDemo }) => {
           </button>
         </div>
 
-        <div className="mt-8 pt-6 border-t border-slate-700/50 text-center">
+        <div className="mt-8 pt-6 border-t border-ocean-700/50 text-center">
           <button
             onClick={() => setPage("home")}
-            className="text-slate-500 hover:text-white text-xs transition-colors flex items-center justify-center gap-1 mx-auto"
+            className="text-slate-500 hover:text-sea-400 text-xs transition-colors flex items-center justify-center gap-1 mx-auto"
           >
             Nazad na početnu
           </button>

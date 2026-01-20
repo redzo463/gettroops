@@ -17,6 +17,7 @@ import { Loader } from "lucide-react";
 
 export default function App() {
   const [page, setPage] = useState("home");
+
   const [user, setUser] = useState(null); // Supabase User (Technical)
   const [currentUser, setCurrentUser] = useState(null); // Registered User (Application User)
 
@@ -90,6 +91,20 @@ export default function App() {
       setUser(session?.user ?? null);
       if (session?.user && !isDemo) {
         hydrateUser(session.user);
+      } else {
+        // Fallback: Check LocalStorage for manual bypass user (Superadmin)
+        const stored = localStorage.getItem("current_user");
+        if (stored) {
+          try {
+            const parsed = JSON.parse(stored);
+            if (parsed && parsed.email === "rsbredzo@gmail.com") {
+              console.log("Restoring Superadmin from LocalStorage (Bypass)");
+              setCurrentUser({ ...parsed, role: "master", name: "Redzep" });
+            }
+          } catch (e) {
+            console.error("Error parsing stored user", e);
+          }
+        }
       }
     });
 
@@ -101,14 +116,36 @@ export default function App() {
       if (session?.user && !isDemo) {
         hydrateUser(session.user);
       } else if (!session?.user) {
-        setCurrentUser(null);
+        // Fallback: Check if we are using the BYPASS login before clearing
+        const stored = localStorage.getItem("current_user");
+        let isBypass = false;
+        if (stored) {
+          try {
+            const parsed = JSON.parse(stored);
+            if (parsed && parsed.email === "rsbredzo@gmail.com") {
+              // We found the bypass user, so we KEEP them logged in
+              isBypass = true;
+              console.log("Keeping Superadmin logged in (Bypass active)");
+              // Ensure they are set in state if not already
+              setCurrentUser((prev) =>
+                prev?.email === "rsbredzo@gmail.com"
+                  ? prev
+                  : { ...parsed, role: "master", name: "Redzep" },
+              );
+            }
+          } catch (e) {}
+        }
+
+        if (!isBypass) {
+          setCurrentUser(null);
+        }
       }
     });
 
     // Demo Mode Persistence
     if (isDemo) {
       const storedUser = JSON.parse(
-        localStorage.getItem("current_user") || "null"
+        localStorage.getItem("current_user") || "null",
       );
       if (storedUser) {
         setCurrentUser(storedUser);
@@ -119,7 +156,7 @@ export default function App() {
   }, [isDemo]);
 
   return (
-    <div className="font-sans text-gray-900 bg-slate-50 min-h-screen flex flex-col">
+    <div className="font-sans text-gray-900 bg-gradient-to-b from-slate-50 to-sea-50/20 min-h-screen flex flex-col">
       {/* Navbar always visible except on Login */}
       {page !== "login" && page !== "admin" && page !== "auth" && (
         <Navbar
@@ -143,7 +180,10 @@ export default function App() {
 
         {page === "admin" &&
           (currentUser &&
-          (currentUser.role === "master" || currentUser.role === "staff") ? (
+          (currentUser.role === "master" ||
+            currentUser.role === "staff" ||
+            (currentUser.email &&
+              currentUser.email.toLowerCase() === "rsbredzo@gmail.com")) ? (
             <AdminDashboard
               user={user}
               setPage={setPage}
@@ -152,7 +192,7 @@ export default function App() {
               isDemo={isDemo}
             />
           ) : (
-            <div className="flex items-center justify-center min-h-screen bg-slate-900 text-white">
+            <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-900 via-ocean-900 to-slate-900 text-white">
               <div className="text-center">
                 <h2 className="text-2xl font-bold mb-4">
                   Učitavanje Dashboarda...
@@ -194,8 +234,8 @@ export default function App() {
               isDemo={isDemo}
             />
           ) : (
-            <div className="flex items-center justify-center min-h-screen bg-slate-900 text-white">
-              <Loader className="animate-spin h-8 w-8 text-amber-500 mb-4" />
+            <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-slate-900 via-ocean-900 to-slate-900 text-white">
+              <Loader className="animate-spin h-8 w-8 text-sun-500 mb-4" />
               <p>Učitavanje korisničkog profila...</p>
             </div>
           ))}
