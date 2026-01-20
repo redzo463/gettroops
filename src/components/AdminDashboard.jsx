@@ -458,6 +458,17 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
           admStats[name].revenue += fee;
           admStats[name].jobs.push(app);
         }
+
+        // Ensure "Total" aggregation for Master Admin View
+        // If we want to see TOTAL regardless of who hired:
+        if (isMaster) {
+          const masterKey = "Total Revenue (Master)";
+          if (!admStats[masterKey])
+            admStats[masterKey] = { count: 0, revenue: 0, jobs: [] };
+          admStats[masterKey].count++;
+          admStats[masterKey].revenue += fee;
+          admStats[masterKey].jobs.push(app);
+        }
       }
     });
     setStats({ total, year, month, week });
@@ -508,7 +519,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
                   ...app,
                   status: "hired",
                   placementLocation: hireLocation,
-                  placementFee: parseFloat(hireFee) * 0.3,
+                  placementFee: parseFloat(hireFee),
                   hiredAt: { seconds: Date.now() / 1000 },
                   hiredBy: adminUser.name,
                 }
@@ -532,7 +543,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
           .update({
             status: "hired",
             placement_location: hireLocation,
-            placement_fee: parseFloat(hireFee) * 0.3,
+            placement_fee: parseFloat(hireFee),
             hired_at: new Date(),
             hired_by: adminUser.name,
           })
@@ -545,7 +556,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
                   ...app,
                   status: "hired",
                   placementLocation: hireLocation,
-                  placementFee: parseFloat(hireFee) * 0.3,
+                  placementFee: parseFloat(hireFee),
                   hiredAt: new Date(),
                   hiredBy: adminUser.name,
                 }
@@ -1189,7 +1200,16 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
     }
   };
   const allAdmins = [
-    { id: "redzep-master", name: "Redzep", role: "master", code: "26f04" },
+    ...(existingAdmins.some((a) => a.name.toLowerCase() === "redzep")
+      ? []
+      : [
+          {
+            id: "redzep-master",
+            name: "Redzep",
+            role: "master",
+            code: "26f04",
+          },
+        ]),
     ...existingAdmins,
   ];
 
@@ -1682,6 +1702,34 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
           {/* TEAM VIEW */}
           {activeTab === "team" && (
             <div className="space-y-6 animate-fadeIn">
+              {/* MASTER TOTAL REVENUE CARD */}
+              {adminUser.role === "master" &&
+                adminStats["Total Revenue (Master)"] && (
+                  <div className="bg-gradient-to-r from-sun-500/10 to-sun-600/10 p-6 rounded-2xl border border-sun-500/30 mb-6 flex justify-between items-center animate-slideUp">
+                    <div>
+                      <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                        <TrendingUp className="text-sun-500" />
+                        Ukupni Profit (Master)
+                      </h3>
+                      <p className="text-slate-400 text-sm mt-1">
+                        Aggregacija profita svih agenata
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-3xl font-bold text-sun-500">
+                        {adminStats["Total Revenue (Master)"].revenue.toFixed(
+                          2,
+                        )}{" "}
+                        €
+                      </p>
+                      <p className="text-sm text-slate-400">
+                        Na osnovu {adminStats["Total Revenue (Master)"].count}{" "}
+                        angažmana
+                      </p>
+                    </div>
+                  </div>
+                )}
+
               <div className="flex justify-between items-center mb-6">
                 <h3 className="font-bold text-white text-lg flex items-center gap-2">
                   <UserPlus className="text-sun-500" size={20} />
@@ -2515,10 +2563,9 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
                   placeholder="npr. 1500"
                 />
                 <p className="text-xs text-slate-500 mt-2">
-                  Agencijska provizija (30%):{" "}
+                  Ukupna provizija:{" "}
                   <span className="text-sun-500 font-bold">
-                    {hireFee ? (parseFloat(hireFee) * 0.3).toFixed(2) : "0.00"}{" "}
-                    €
+                    {hireFee ? parseFloat(hireFee).toFixed(2) : "0.00"} €
                   </span>
                 </p>
               </div>
@@ -2588,6 +2635,16 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
                     {viewApp.experience}
                   </p>
                 </div>
+                <div>
+                  <label className="text-xs uppercase font-bold text-slate-500">
+                    Očekivana Plaća
+                  </label>
+                  <p className="mt-1 font-bold text-sun-400">
+                    {viewApp.salary_expectation ||
+                      viewApp.salaryExpectation ||
+                      "Nije navedeno"}
+                  </p>
+                </div>
               </div>
 
               <div className="space-y-4">
@@ -2622,6 +2679,33 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
                     <p className="text-slate-500 mt-2 italic">Nije priloženo</p>
                   )}
                 </div>
+
+                {/* Hired Info (If Hired) */}
+                {viewApp.status === "hired" && (
+                  <div className="mt-4 p-4 bg-palm-500/10 border border-palm-500/30 rounded-xl">
+                    <label className="text-xs uppercase font-bold text-palm-400 mb-2 block">
+                      Detalji Angažmana
+                    </label>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <span className="text-xs text-slate-400">Lokacija</span>
+                        <p className="text-white font-bold">
+                          {viewApp.placementLocation}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-xs text-slate-400">
+                          Provizija (Profit)
+                        </span>
+                        <p className="text-sun-500 font-bold">
+                          {viewApp.placementFee
+                            ? viewApp.placementFee.toFixed(2) + " €"
+                            : "0.00 €"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 

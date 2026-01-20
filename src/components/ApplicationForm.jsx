@@ -41,6 +41,7 @@ const ApplicationForm = ({
     cvFile: null,
     cvName: "",
     otherPosition: "",
+    salaryExpectation: "",
   });
 
   useEffect(() => {
@@ -194,6 +195,7 @@ const ApplicationForm = ({
             experience: formData.experience,
             about: formData.about,
             cv_name: formData.cvName,
+            salary_expectation: formData.salaryExpectation,
             status: "new",
             user_id: user.id,
             created_at: new Date(),
@@ -214,6 +216,7 @@ const ApplicationForm = ({
         cvFile: null,
         cvName: "",
         otherPosition: "",
+        salaryExpectation: "",
       });
       if (fileInputRef.current) fileInputRef.current.value = "";
 
@@ -439,6 +442,21 @@ const ApplicationForm = ({
                   />
                 </div>
               )}
+            </div>
+
+            {/* Salary Expectation */}
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-1">
+                Očekivana Plaća (Neto)
+              </label>
+              <input
+                type="text"
+                name="salaryExpectation"
+                value={formData.salaryExpectation}
+                onChange={handleInputChange}
+                className="w-full rounded-lg border-slate-600 shadow-sm focus:border-sun-500 focus:ring-sun-500 p-3 bg-slate-700 text-white"
+                placeholder="npr. 1200 - 1500 EUR"
+              />
             </div>
 
             {/* Experience Detail */}
