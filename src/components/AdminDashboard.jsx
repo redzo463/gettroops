@@ -34,7 +34,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
   const [activeTab, setActiveTab] = useState("applications"); // 'dashboard', 'applications', 'team', 'users'
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 768);
 
   // Hiring Modal State
   const [hiringApp, setHiringApp] = useState(null);
@@ -1342,7 +1342,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
 
       {/* Main Content */}
       <main
-        className={`flex-1 transition-all duration-300 relative z-10 w-full md:pl-0
+        className={`flex-1 transition-all duration-300 relative z-10 md:pl-0
           ${sidebarOpen ? "md:ml-72" : "md:ml-24"} 
         `}
       >
@@ -1379,7 +1379,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
           </div>
         </header>
 
-        <div className="p-8">
+        <div className="p-4 md:p-8">
           {/* STATS VIEW */}
           {activeTab === "dashboard" && (
             <div className="space-y-8 animate-fadeIn">
@@ -1457,7 +1457,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
                                 : "bg-sun-500"
                           }`}
                         ></div>
-                        <div className="flex-1">
+                        <div className="flex-1 min-w-0">
                           <p className="text-sm text-white">
                             <span className="font-bold">
                               {app.firstName} {app.lastName}
