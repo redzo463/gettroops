@@ -334,7 +334,7 @@ const ApplicationForm = ({
                     required
                     value={formData.firstName}
                     onChange={handleInputChange}
-                    className="w-full rounded-lg border-slate-600 shadow-sm focus:border-sun-500 focus:ring-sun-500 p-3 bg-slate-700 text-white"
+                    className="w-full rounded-lg border-slate-600 shadow-sm focus:border-sun-500 focus:ring-sun-500 p-3 bg-slate-700 text-white text-base"
                     placeholder="Vaše ime"
                   />
                 </div>
@@ -348,7 +348,7 @@ const ApplicationForm = ({
                     required
                     value={formData.lastName}
                     onChange={handleInputChange}
-                    className="w-full rounded-lg border-slate-600 shadow-sm focus:border-sun-500 focus:ring-sun-500 p-3 bg-slate-700 text-white"
+                    className="w-full rounded-lg border-slate-600 shadow-sm focus:border-sun-500 focus:ring-sun-500 p-3 bg-slate-700 text-white text-base"
                     placeholder="Vaše prezime"
                   />
                 </div>
@@ -362,7 +362,7 @@ const ApplicationForm = ({
                     required
                     value={formData.email}
                     onChange={handleInputChange}
-                    className="w-full rounded-lg border-slate-600 shadow-sm focus:border-sun-500 focus:ring-sun-500 p-3 bg-slate-700 text-white"
+                    className="w-full rounded-lg border-slate-600 shadow-sm focus:border-sun-500 focus:ring-sun-500 p-3 bg-slate-700 text-white text-base"
                     placeholder="email@primjer.com"
                   />
                 </div>
@@ -376,7 +376,7 @@ const ApplicationForm = ({
                     required
                     value={formData.phone}
                     onChange={handleInputChange}
-                    className="w-full rounded-lg border-slate-600 shadow-sm focus:border-sun-500 focus:ring-sun-500 p-3 bg-slate-700 text-white"
+                    className="w-full rounded-lg border-slate-600 shadow-sm focus:border-sun-500 focus:ring-sun-500 p-3 bg-slate-700 text-white text-base"
                     placeholder="+387 61 ..."
                   />
                 </div>
@@ -437,7 +437,7 @@ const ApplicationForm = ({
                     required
                     value={formData.otherPosition}
                     onChange={handleInputChange}
-                    className="w-full rounded-lg border-slate-600 shadow-sm focus:border-sun-500 focus:ring-sun-500 p-3 bg-slate-700 text-white"
+                    className="w-full rounded-lg border-slate-600 shadow-sm focus:border-sun-500 focus:ring-sun-500 p-3 bg-slate-700 text-white text-base"
                     placeholder="Npr. Vrtlar, Vozač, Hostesa..."
                   />
                 </div>
@@ -454,7 +454,7 @@ const ApplicationForm = ({
                 name="salaryExpectation"
                 value={formData.salaryExpectation}
                 onChange={handleInputChange}
-                className="w-full rounded-lg border-slate-600 shadow-sm focus:border-sun-500 focus:ring-sun-500 p-3 bg-slate-700 text-white"
+                className="w-full rounded-lg border-slate-600 shadow-sm focus:border-sun-500 focus:ring-sun-500 p-3 bg-slate-700 text-white text-base"
                 placeholder="npr. 1200 - 1500 EUR"
               />
             </div>
@@ -469,7 +469,7 @@ const ApplicationForm = ({
                   name="experience"
                   value={formData.experience}
                   onChange={handleInputChange}
-                  className="w-full rounded-lg border-slate-600 shadow-sm focus:border-sun-500 focus:ring-sun-500 p-3 bg-slate-700 text-white"
+                  className="w-full rounded-lg border-slate-600 shadow-sm focus:border-sun-500 focus:ring-sun-500 p-3 bg-slate-700 text-white text-base"
                 >
                   <option value="">Odaberite...</option>
                   <option value="Bez iskustva">Bez iskustva (Početnik)</option>
@@ -487,7 +487,7 @@ const ApplicationForm = ({
                   rows={4}
                   value={formData.about}
                   onChange={handleInputChange}
-                  className="w-full rounded-lg border-slate-600 shadow-sm focus:border-sun-500 focus:ring-sun-500 p-3 bg-slate-700 text-white"
+                  className="w-full rounded-lg border-slate-600 shadow-sm focus:border-sun-500 focus:ring-sun-500 p-3 bg-slate-700 text-white text-base"
                   placeholder="Navedite gdje ste prije radili, strane jezike koje govorite..."
                 />
               </div>

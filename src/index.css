@@ -1,3 +1,13 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%; /* Prevent font scaling in landscape */
+  }
+
+  /* Prevent auto-zoom on inputs on iOS by enforcing 16px min size if needed, 
+     but we'll handle this mostly via utility classes on inputs */
+}

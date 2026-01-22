@@ -217,7 +217,8 @@ const Navbar = ({ setPage, currentPage, currentUser, setCurrentUser }) => {
           <div className="flex md:hidden relative z-50">
             <button
               onClick={() => setIsOpen(!isOpen)}
-              className="bg-slate-800 p-2 rounded-lg text-sea-400 hover:text-white hover:bg-gradient-to-r hover:from-sea-500 hover:to-sun-500 transition-colors shadow-lg"
+              aria-label={isOpen ? "Zatvori izbornik" : "Otvori izbornik"}
+              className="bg-slate-800 p-2 rounded-lg text-sea-400 hover:text-white hover:bg-gradient-to-r hover:from-sea-500 hover:to-sun-500 transition-colors shadow-lg min-h-[44px] min-w-[44px] flex items-center justify-center"
             >
               {isOpen ? (
                 <X className="h-6 w-6" />
@@ -231,11 +232,13 @@ const Navbar = ({ setPage, currentPage, currentUser, setCurrentUser }) => {
 
       {/* Mobile Menu Overlay */}
       <div
-        className={`md:hidden fixed inset-0 z-40 bg-gradient-to-b from-slate-900 via-ocean-900 to-slate-900 h-[100dvh] flex flex-col justify-center transition-transform duration-300 ease-in-out ${
-          isOpen ? "translate-x-0" : "translate-x-full"
+        className={`md:hidden fixed inset-0 z-40 bg-slate-900/95 backdrop-blur-xl h-[100dvh] flex flex-col justify-center transition-all duration-300 ease-in-out ${
+          isOpen
+            ? "opacity-100 translate-x-0"
+            : "opacity-0 translate-x-full pointer-events-none"
         }`}
       >
-        <div className="px-6 space-y-4">
+        <div className="px-6 space-y-4 max-w-sm mx-auto w-full">
           <button
             onClick={() => {
               setPage("home");
@@ -243,7 +246,7 @@ const Navbar = ({ setPage, currentPage, currentUser, setCurrentUser }) => {
             }}
             className={`flex items-center gap-4 w-full px-6 py-5 rounded-2xl text-xl font-bold transition-all ${
               currentPage === "home"
-                ? "bg-sea-500/10 text-sea-400 border border-sea-500/20"
+                ? "bg-sea-500/10 text-sea-400 border border-sea-500/20 shadow-sea-500/10 shadow-lg"
                 : "text-slate-300 hover:bg-slate-800 hover:text-white"
             }`}
           >
@@ -257,7 +260,7 @@ const Navbar = ({ setPage, currentPage, currentUser, setCurrentUser }) => {
             }}
             className={`flex items-center gap-4 w-full px-6 py-5 rounded-2xl text-xl font-bold transition-all ${
               currentPage === "about"
-                ? "bg-sea-500/10 text-sea-400 border border-sea-500/20"
+                ? "bg-sea-500/10 text-sea-400 border border-sea-500/20 shadow-sea-500/10 shadow-lg"
                 : "text-slate-300 hover:bg-slate-800 hover:text-white"
             }`}
           >
@@ -270,13 +273,13 @@ const Navbar = ({ setPage, currentPage, currentUser, setCurrentUser }) => {
             }}
             className={`flex items-center gap-4 w-full px-6 py-5 rounded-2xl text-xl font-bold transition-all ${
               currentPage === "contact"
-                ? "bg-sea-500/10 text-sea-400 border border-sea-500/20"
+                ? "bg-sea-500/10 text-sea-400 border border-sea-500/20 shadow-sea-500/10 shadow-lg"
                 : "text-slate-300 hover:bg-slate-800 hover:text-white"
             }`}
           >
             <Phone size={24} /> Kontakt
           </button>
-          <div className="border-t border-ocean-800 my-4"></div>
+          <div className="border-t border-slate-700/50 my-6"></div>
 
           {/* Dashboard Link for Admins (Mobile) */}
           {currentUser &&
@@ -286,7 +289,7 @@ const Navbar = ({ setPage, currentPage, currentUser, setCurrentUser }) => {
                   setPage("dashboard");
                   setIsOpen(false);
                 }}
-                className="flex items-center justify-center gap-2 w-full px-4 py-4 mb-4 rounded-xl text-lg font-bold bg-gradient-to-r from-sea-500 to-sea-600 text-white shadow-lg active:scale-95 transition-all"
+                className="flex items-center justify-center gap-2 w-full px-4 py-5 mb-4 rounded-xl text-lg font-bold bg-gradient-to-r from-sea-500 to-sea-600 text-white shadow-lg active:scale-95 transition-all"
               >
                 <User size={20} /> Moj Dashboard
               </button>
@@ -303,7 +306,7 @@ const Navbar = ({ setPage, currentPage, currentUser, setCurrentUser }) => {
               else setPage("auth");
               setIsOpen(false);
             }}
-            className="flex items-center justify-center gap-2 w-full px-4 py-4 rounded-xl text-lg font-bold bg-gradient-to-r from-sun-500 to-sun-600 text-white shadow-lg active:scale-95 transition-all"
+            className="flex items-center justify-center gap-2 w-full px-4 py-5 rounded-xl text-lg font-bold bg-gradient-to-r from-sun-500 to-sun-600 text-white shadow-lg active:scale-95 transition-all"
           >
             {currentUser &&
             (currentUser.role === "staff" || currentUser.role === "master") ? (

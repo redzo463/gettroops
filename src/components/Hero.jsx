@@ -2,7 +2,7 @@ import React from "react";
 import { Briefcase, ArrowRight, Waves, Sun } from "lucide-react";
 
 const Hero = ({ setPage }) => (
-  <div className="relative h-screen min-h-[600px] w-full bg-gradient-to-b from-slate-900 via-ocean-900 to-slate-900 overflow-hidden flex items-center justify-center pt-32">
+  <div className="relative h-screen min-h-[600px] w-full bg-gradient-to-b from-slate-900 via-ocean-900 to-slate-900 overflow-hidden flex items-center justify-center pt-24 md:pt-32">
     {/* Background Image & Overlay */}
     <div className="absolute inset-0 z-0">
       <img
@@ -41,7 +41,7 @@ const Hero = ({ setPage }) => (
           <Waves className="w-4 h-4 text-sea-300" />
         </span>
 
-        <h1 className="text-4xl sm:text-5xl md:text-7xl font-extrabold text-white tracking-tight leading-tight mb-8 drop-shadow-2xl">
+        <h1 className="text-3xl sm:text-5xl md:text-7xl font-extrabold text-white tracking-tight leading-tight mb-8 drop-shadow-2xl">
           Vaša karijera u <br />
           <span className="text-transparent bg-clip-text bg-gradient-to-r from-sea-400 via-ocean-400 to-sun-500">
             UGOSTITELJSTVU

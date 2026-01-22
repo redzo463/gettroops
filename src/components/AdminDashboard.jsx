@@ -1559,10 +1559,16 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
                     <thead className="bg-white/5 text-slate-400 uppercase text-xs font-bold tracking-wider">
                       <tr>
                         <th className="px-6 py-4">Korisnik</th>
-                        <th className="px-6 py-4">Email</th>
+                        <th className="hidden md:table-cell px-6 py-4">
+                          Email
+                        </th>
                         <th className="px-6 py-4">Status</th>
-                        <th className="px-6 py-4">Datum Registracije</th>
-                        <th className="px-6 py-4">Aktivne Prijave</th>
+                        <th className="hidden lg:table-cell px-6 py-4">
+                          Datum Registracije
+                        </th>
+                        <th className="hidden xl:table-cell px-6 py-4">
+                          Aktivne Prijave
+                        </th>
                         {adminUser.role === "master" && (
                           <th className="px-6 py-4">Akcije</th>
                         )}
@@ -1625,7 +1631,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
                                   </span>
                                 </div>
                               </td>
-                              <td className="px-6 py-4 text-slate-300 font-mono text-sm">
+                              <td className="hidden md:table-cell px-6 py-4 text-slate-300 font-mono text-sm">
                                 {u.email}
                               </td>
                               <td className="px-6 py-4">
@@ -1641,12 +1647,12 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
                                   {u.role || "candidate"}
                                 </span>
                               </td>
-                              <td className="px-6 py-4 text-slate-400 text-sm">
+                              <td className="hidden lg:table-cell px-6 py-4 text-slate-400 text-sm">
                                 {u.createdAt
                                   ? new Date(u.createdAt).toLocaleDateString()
                                   : "N/A"}
                               </td>
-                              <td className="px-6 py-4">
+                              <td className="hidden xl:table-cell px-6 py-4">
                                 {activeApps > 0 ? (
                                   <span className="text-sun-500 font-bold">
                                     {activeApps} Aktivnih
@@ -2299,9 +2305,15 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
                     <thead className="bg-white/5">
                       <tr className="text-left text-xs text-slate-400 uppercase tracking-wider">
                         <th className="px-6 py-4 font-bold">Pošiljalac</th>
-                        <th className="px-6 py-4 font-bold">Predmet</th>
-                        <th className="px-6 py-4 font-bold">Poruka</th>
-                        <th className="px-6 py-4 font-bold">Datum</th>
+                        <th className="hidden md:table-cell px-6 py-4 font-bold">
+                          Predmet
+                        </th>
+                        <th className="hidden lg:table-cell px-6 py-4 font-bold">
+                          Poruka
+                        </th>
+                        <th className="hidden lg:table-cell px-6 py-4 font-bold">
+                          Datum
+                        </th>
                         <th className="px-6 py-4 font-bold">Status</th>
                         <th className="px-6 py-4 font-bold">Akcije</th>
                       </tr>
@@ -2344,12 +2356,12 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
                                 </p>
                               </div>
                             </td>
-                            <td className="px-6 py-4">
+                            <td className="hidden md:table-cell px-6 py-4">
                               <span className="font-medium text-white">
                                 {msg.subject}
                               </span>
                             </td>
-                            <td className="px-6 py-4 max-w-xs">
+                            <td className="hidden lg:table-cell px-6 py-4 max-w-xs">
                               <p
                                 className="text-slate-300 truncate"
                                 title={msg.message}
@@ -2357,7 +2369,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
                                 {msg.message}
                               </p>
                             </td>
-                            <td className="px-6 py-4 text-slate-400 text-sm whitespace-nowrap">
+                            <td className="hidden lg:table-cell px-6 py-4 text-slate-400 text-sm whitespace-nowrap">
                               {new Date(msg.created_at).toLocaleDateString(
                                 "bs-BA",
                                 {

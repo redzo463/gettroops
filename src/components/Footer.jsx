@@ -40,11 +40,13 @@ const Footer = ({ setPage }) => (
         {/* Quick Links */}
         <div>
           <h3 className="text-white text-lg font-bold mb-6">Navigacija</h3>
-          <ul className="space-y-3 text-sm">
+          <ul className="space-y-4 text-sm">
+            {" "}
+            {/* Changed space-y-3 to space-y-4 */}
             <li>
               <button
                 onClick={() => setPage("home")}
-                className="hover:text-sea-400 transition-colors block text-left w-full"
+                className="hover:text-sea-400 transition-colors block text-left w-full py-1"
               >
                 Početna
               </button>
@@ -52,16 +54,15 @@ const Footer = ({ setPage }) => (
             <li>
               <button
                 onClick={() => setPage("about")}
-                className="hover:text-sea-400 transition-colors block text-left w-full"
+                className="hover:text-sea-400 transition-colors block text-left w-full py-1"
               >
                 O Nama
               </button>
             </li>
-
             <li>
               <button
                 onClick={() => setPage("contact")}
-                className="hover:text-sea-400 transition-colors block text-left w-full"
+                className="hover:text-sea-400 transition-colors block text-left w-full py-1"
               >
                 Kontakt
               </button>
