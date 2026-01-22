@@ -1242,7 +1242,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-900 via-ocean-900 to-slate-900 flex font-sans text-slate-200">
+    <div className="min-h-screen bg-gradient-to-b from-slate-900 via-ocean-900 to-slate-900 flex flex-col md:flex-row font-sans text-slate-200 overflow-x-hidden">
       {/* Background Decoration */}
       <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
         <div className="absolute top-[20%] right-[10%] w-[30%] h-[30%] bg-sun-500/5 rounded-full blur-3xl"></div>
@@ -1342,7 +1342,7 @@ const AdminDashboard = ({ user, setPage, setAdminUser, adminUser, isDemo }) => {
 
       {/* Main Content */}
       <main
-        className={`flex-1 transition-all duration-300 relative z-10 md:pl-0
+        className={`flex-1 transition-all duration-300 relative z-10 md:pl-0 w-full max-w-full
           ${sidebarOpen ? "md:ml-72" : "md:ml-24"} 
         `}
       >

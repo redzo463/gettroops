@@ -2,7 +2,7 @@ import React from "react";
 import { Briefcase, ArrowRight, Waves, Sun } from "lucide-react";
 
 const Hero = ({ setPage }) => (
-  <div className="relative h-screen min-h-[600px] w-full bg-gradient-to-b from-slate-900 via-ocean-900 to-slate-900 overflow-hidden flex items-center justify-center pt-24 md:pt-32">
+  <div className="relative min-h-screen w-full bg-gradient-to-b from-slate-900 via-ocean-900 to-slate-900 overflow-hidden flex items-center justify-center pt-24 md:pt-32 pb-16 md:pb-0">
     {/* Background Image & Overlay */}
     <div className="absolute inset-0 z-0">
       <img
@@ -16,8 +16,13 @@ const Hero = ({ setPage }) => (
       <div className="absolute inset-0 bg-gradient-to-r from-slate-900/90 via-sea-900/40 to-sun-900/30" />
 
       {/* Decorative wave pattern */}
-      <div className="absolute bottom-0 left-0 right-0 h-32 opacity-20">
-        <svg viewBox="0 0 1440 120" fill="none" className="w-full h-full">
+      <div className="absolute bottom-0 left-0 right-0 h-16 md:h-32 opacity-20">
+        <svg
+          viewBox="0 0 1440 120"
+          fill="none"
+          className="w-full h-full"
+          preserveAspectRatio="none"
+        >
           <path
             d="M0,60 C480,120 960,0 1440,60 L1440,120 L0,120 Z"
             fill="url(#waveGradient)"
@@ -75,7 +80,7 @@ const Hero = ({ setPage }) => (
         </div>
 
         {/* Stats / Social Proof (Mini) */}
-        <div className="mt-16 pt-8 border-t border-white/20 flex justify-center gap-8 md:gap-16">
+        <div className="mt-16 pt-8 border-t border-white/20 flex flex-col md:flex-row justify-center gap-12 md:gap-16">
           <div className="text-center">
             <span className="block text-3xl font-bold text-sea-300 drop-shadow-lg">
               50+
